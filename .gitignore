@@ -1,0 +1,42 @@
+bin/
+target/
+coverage.txt
+*~
+\#*
+
+# misc
+.DS_Store
+*.test
+*.prof
+coverage.out
+*.csr
+*.pem
+ca-config.json
+
+# packaging
+*.log
+.vagrant/
+*.deb
+*.rpm
+*.pkg
+*.dmg
+*.bff
+*.solaris
+*.txz
+*.tar.gz
+packages/*
+packaging/hooks/*/deb/*
+!packaging/hooks/*/deb/*.erb
+packaging/hooks/*/rpm/*
+!packaging/hooks/*/rpm/*.erb
+.kitchen/
+.kitchen.local.yml
+.packagecloud
+gcs-service-account.json
+*.wixobj
+*.wixpdb
+*.msi
+version-bin
+
+# editors
+.idea
