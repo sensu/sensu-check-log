@@ -4,47 +4,84 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"io/ioutil"
 	"sync"
 )
 
 const bufSize = 1000
 
 type Analyzer struct {
-	Procs int
-	Log   io.Reader
-	Func  AnalyzerFunc
+	Procs     int
+	Log       io.Reader
+	Func      AnalyzerFunc
+	bytesRead int64
+	wg        sync.WaitGroup
+}
+
+type discardInterface interface {
+	io.Writer
+	io.ReaderFrom
+}
+
+type DiscardWriter struct {
+	discardWriter discardInterface
+	BytesRead     int64
+}
+
+func (d *DiscardWriter) Write(b []byte) (int, error) {
+	n, err := d.discardWriter.Write(b)
+	d.BytesRead += int64(n)
+	return n, err
+}
+
+func (d *DiscardWriter) ReadFrom(r io.Reader) (int64, error) {
+	n, err := d.discardWriter.ReadFrom(r)
+	d.BytesRead += n
+	return n, err
+}
+
+func NewDiscardWriter() *DiscardWriter {
+	discard := ioutil.Discard.(discardInterface)
+	return &DiscardWriter{discardWriter: discard}
 }
 
 type AnalyzerFunc func([]byte) *Result
 
 type Result struct {
-	Match string
-	Err   error
+	Match string `json:"match"`
+	Err   error  `json:"error,omitempty"`
 }
 
 func (a *Analyzer) Go(ctx context.Context) <-chan Result {
 	resultC := make(chan Result)
-	var wg sync.WaitGroup
-	wg.Add(a.Procs)
+	a.wg.Add(a.Procs)
+	producer := a.startProducer(ctx)
 	go func() {
-		wg.Wait()
+		a.wg.Wait()
 		close(resultC)
 	}()
-	producer := a.startProducer(ctx)
 	for i := 0; i < a.Procs; i++ {
-		go a.consumer(ctx, producer, resultC, &wg)
+		go a.consumer(ctx, producer, resultC)
 	}
 	return resultC
+}
+
+func (a *Analyzer) BytesRead() int64 {
+	a.wg.Wait()
+	return a.bytesRead
 }
 
 func (a *Analyzer) startProducer(ctx context.Context) <-chan []byte {
 	result := make(chan []byte, bufSize)
 	reader := bufio.NewReaderSize(a.Log, 32*1024*1024)
-	scanner := bufio.NewScanner(reader)
-	// 1 MB scanner buffer
-	// buf := make([]byte, 1024*1024)
-	// scanner.Buffer(buf, len(buf))
+	discard := NewDiscardWriter()
+	teeReader := io.TeeReader(reader, discard)
+	scanner := bufio.NewScanner(teeReader)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	a.wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for scanner.Scan() {
 			line := scanner.Bytes()
 			select {
@@ -59,11 +96,16 @@ func (a *Analyzer) startProducer(ctx context.Context) <-chan []byte {
 		}
 		close(result)
 	}()
+	go func() {
+		defer a.wg.Done()
+		wg.Wait()
+		a.bytesRead = discard.BytesRead
+	}()
 	return result
 }
 
-func (a *Analyzer) consumer(ctx context.Context, producer <-chan []byte, results chan<- Result, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (a *Analyzer) consumer(ctx context.Context, producer <-chan []byte, results chan<- Result) {
+	defer a.wg.Done()
 	for {
 		select {
 		case <-ctx.Done():
