@@ -183,9 +183,9 @@ func sendEvent(inputEvent *sensu.Event, status int, results *bytes.Buffer) error
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
+	if status := resp.StatusCode; status >= 400 {
 		b, _ := ioutil.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return fmt.Errorf("error writing event: status %d: %s", string(b))
+		return fmt.Errorf("error writing event: status %d: %s", status, string(b))
 	}
 
 	return nil
