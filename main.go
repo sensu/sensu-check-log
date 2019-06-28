@@ -22,6 +22,7 @@ var (
 	stateFile   = flag.String("state", "", "state file for incremental log analysis (required)")
 	eventStatus = flag.Int("event-status", 1, "event status on positive match")
 	eventsAPI   = flag.String("api-url", "http://localhost:3031", "agent events API URL")
+	maxBytes    = flag.Int64("max-bytes", 0, "max number of bytes to read (0 means unlimited)")
 )
 
 const (
@@ -123,9 +124,14 @@ func main() {
 		}
 	}
 
+	var reader io.Reader = f
+	if *maxBytes > 0 {
+		reader = io.LimitReader(f, *maxBytes)
+	}
+
 	analyzer := Analyzer{
 		Procs: *procs,
-		Log:   f,
+		Log:   reader,
 		Func:  AnalyzeRegexp(*match),
 	}
 
