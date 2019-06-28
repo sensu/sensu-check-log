@@ -7,9 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"runtime"
 	"time"
@@ -148,7 +146,7 @@ func main() {
 	}
 
 	if status != state.Status {
-		if err := sendEvent(&inputEvent, status, eventBuf); err != nil {
+		if err := sendEvent(*eventsAPI, &inputEvent, status, eventBuf.String()); err != nil {
 			fatal("error sending event: %s", err)
 		}
 	}
@@ -159,34 +157,4 @@ func main() {
 	if err := setState(state); err != nil {
 		fatal("%s", err)
 	}
-
-}
-
-func sendEvent(inputEvent *sensu.Event, status int, results *bytes.Buffer) error {
-	outputEvent := sensu.Event{}
-	outputEvent.Namespace = inputEvent.Namespace
-	check := inputEvent.Check
-	outputEvent.Check = check
-	check.Executed = time.Now().Unix()
-	check.Issued = inputEvent.Check.Issued
-	check.Command = inputEvent.Check.Command
-	check.Name = fmt.Sprintf("%s-failure", check.Name)
-
-	b, err := json.Marshal(outputEvent)
-	if err != nil {
-		return fmt.Errorf("error writing event: %s", err)
-	}
-
-	resp, err := http.Post(*eventsAPI, "application/json", bytes.NewReader(b))
-	if err != nil {
-		return fmt.Errorf("error writing event: %s", err)
-	}
-	defer resp.Body.Close()
-
-	if status := resp.StatusCode; status >= 400 {
-		b, _ := ioutil.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return fmt.Errorf("error writing event: status %d: %s", status, string(b))
-	}
-
-	return nil
 }
