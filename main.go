@@ -35,8 +35,8 @@ type State struct {
 	Status int         `json:"status"`
 }
 
-func getState() (state State, err error) {
-	f, err := os.Open(*stateFile)
+func getState(path string) (state State, err error) {
+	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return state, nil
@@ -50,8 +50,8 @@ func getState() (state State, err error) {
 	return state, nil
 }
 
-func setState(cur State) (err error) {
-	f, err := os.Create(*stateFile)
+func setState(cur State, path string) (err error) {
+	f, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("couldn't write state file: %s", err)
 	}
@@ -112,7 +112,7 @@ func main() {
 		}
 	}()
 
-	state, err := getState()
+	state, err := getState(*stateFile)
 	if err != nil {
 		fatal("%s", err)
 	}
@@ -154,7 +154,7 @@ func main() {
 	bytesRead := analyzer.BytesRead()
 	state.Offset = json.Number(fmt.Sprintf("%d", offset+bytesRead))
 
-	if err := setState(state); err != nil {
+	if err := setState(state, *stateFile); err != nil {
 		fatal("%s", err)
 	}
 }
