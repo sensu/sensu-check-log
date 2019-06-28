@@ -1,14 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"runtime"
+	"time"
+
+	sensu "github.com/sensu/sensu-go/api/core/v2"
 )
 
 var (
@@ -17,6 +23,7 @@ var (
 	match       = flag.String("match", "", "RE2 regexp matcher expression")
 	stateFile   = flag.String("state", "", "state file for incremental log analysis (required)")
 	eventStatus = flag.Int("event-status", 1, "event status on positive match")
+	eventsAPI   = flag.String("api-url", "http://localhost:3031", "agent events API URL")
 )
 
 const (
@@ -83,6 +90,20 @@ func testFlags() {
 func main() {
 	testFlags()
 
+	timer := time.NewTimer(5 * time.Second)
+	go func() {
+		if _, ok := <-timer.C; ok {
+			fatal("failed to read from stdin. (did you set 'stdin: true' on check config?)")
+		}
+	}()
+
+	var inputEvent sensu.Event
+	if err := json.NewDecoder(os.Stdin).Decode(&inputEvent); err != nil {
+		fatal("error decoding input event: %s", err)
+	}
+
+	timer.Stop()
+
 	f, err := os.Open(*logFile)
 	if err != nil {
 		fatal("couldn't open log file: %s", err)
@@ -111,16 +132,25 @@ func main() {
 	}
 
 	results := analyzer.Go(context.Background())
-	enc := json.NewEncoder(os.Stdout)
+	eventBuf := new(bytes.Buffer)
+	enc := json.NewEncoder(eventBuf)
+
+	status := state.Status
 
 	for result := range results {
 		if result.Err != nil {
-			state.Status = StatusCrit
+			status = StatusCrit
 		}
 		if err := enc.Encode(result); err != nil {
 			fatal("%s", err)
 		}
-		state.Status = *eventStatus
+		status = *eventStatus
+	}
+
+	if status != state.Status {
+		if err := sendEvent(&inputEvent, status, eventBuf); err != nil {
+			fatal("error sending event: %s", err)
+		}
 	}
 
 	bytesRead := analyzer.BytesRead()
@@ -129,4 +159,34 @@ func main() {
 	if err := setState(state); err != nil {
 		fatal("%s", err)
 	}
+
+}
+
+func sendEvent(inputEvent *sensu.Event, status int, results *bytes.Buffer) error {
+	outputEvent := sensu.Event{}
+	outputEvent.Namespace = inputEvent.Namespace
+	check := inputEvent.Check
+	outputEvent.Check = check
+	check.Executed = time.Now().Unix()
+	check.Issued = inputEvent.Check.Issued
+	check.Command = inputEvent.Check.Command
+	check.Name = fmt.Sprintf("%s-failure", check.Name)
+
+	b, err := json.Marshal(outputEvent)
+	if err != nil {
+		return fmt.Errorf("error writing event: %s", err)
+	}
+
+	resp, err := http.Post(*eventsAPI, "application/json", bytes.NewReader(b))
+	if err != nil {
+		return fmt.Errorf("error writing event: %s", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		b, _ := ioutil.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		return fmt.Errorf("error writing event: status %d: %s", string(b))
+	}
+
+	return nil
 }
