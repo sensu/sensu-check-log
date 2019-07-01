@@ -1,4 +1,3 @@
-# This is an example goreleaser.yaml file with some sane defaults.
 # Make sure to check the documentation at http://goreleaser.com
 before:
   hooks:
@@ -6,14 +5,31 @@ before:
     - go mod download
 builds:
 - env:
-  - CGO_ENABLED=0
-archive:
-  replacements:
-    darwin: Darwin
-    linux: Linux
-    windows: Windows
-    386: i386
-    amd64: x86_64
+    - CGO_ENABLED=0
+  goos:
+    - linux
+    - darwin
+    - windows
+    - freebsd
+  goarch:
+    - amd64
+    - '386'
+    - arm64
+    - arm
+  goarm:
+    - 6
+    - 7
+  ignore:
+    - goos: darwin
+      goarch: '386'
+    - goos: darwin
+      goarch: arm
+    - goos: darwin
+      goarch: arm64
+    - goos: windows
+      goarch: arm
+    - goos: windows
+      goarch: arm64
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -24,3 +40,128 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
+nfpms:
+  # note that this is an array of nfpm configs
+  -
+    # ID of the nfpm config, must be unique.
+    # Defaults to "default".
+    # id: default
+    # You can change the name of the package.
+    # Default: `{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}`
+    # name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+    # Build IDs for the builds you want to create NFPM packages for.
+    # Defaults to all builds.
+    # builds:
+    # - foo
+    # - bar
+
+    # Replacements for GOOS and GOARCH in the package name.
+    # Keys should be valid GOOSs or GOARCHs.
+    # Values are the respective replacements.
+    # Default is empty.
+    #replacements:
+    #  amd64: 64-bit
+    #  386: 32-bit
+    #  darwin: macOS
+    #  linux: Tux
+
+    # Your app's vendor.
+    # Default is empty.
+    vendor: Sensu, Inc.
+    # Your app's homepage.
+    # Default is empty.
+    homepage: https://sensu.io
+
+    # Your app's maintainer (probably you).
+    # Default is empty.
+    maintainer: Eric Chlebek <eric@sensu.io>
+
+    # Your app's description.
+    # Default is empty.
+    description: High performance log file analyzer.
+
+    # Your app's license.
+    # Default is empty.
+    license: MIT
+
+    # Formats to be generated.
+    formats:
+      - deb
+      - rpm
+
+    # Packages your package depends on.
+    dependencies: []
+
+    # Packages your package recommends installing.
+    # For RPM packages rpmbuild >= 4.13 is required
+    recommends: []
+
+    # Packages your package suggests installing.
+    # For RPM packages rpmbuild >= 4.13 is required
+    suggests: []
+
+    # Packages that conflict with your package.
+    conflicts: []
+
+    # Override default /usr/local/bin destination for binaries
+    # bindir: /usr/bin
+
+    # Package epoch.
+    # Defaults to empty.
+    # epoch: 1
+
+    # Empty folders that should be created and managed by the packager
+    # implementation.
+    # Default is empty.
+    empty_folders:
+    - /etc/sensu-check-log
+
+    # Files or directories to add to your package (beyond the binary).
+    # Keys are source paths/globs to get the files from.
+    # Values are the destination locations of the files in the package.
+    # files:
+    #   "scripts/etc/init.d/": "/etc/init.d"
+    #   "path/**/glob": "/var/foo/glob"
+
+    # Config files to add to your package. They are about the same as
+    # the files keyword, except package managers treat them differently (while
+    # uninstalling, mostly).
+    # Keys are source paths/globs to get the files from.
+    # Values are the destination locations of the files in the package.
+    # config_files:
+    #   "tmp/app_generated.conf": "/etc/app.conf"
+    #   "conf/*.conf": "/etc/foo/"
+
+    # Scripts to execute during the installation of the package.
+    # Keys are the possible targets during the installation process
+    # Values are the paths to the scripts which will be executed
+    # scripts:
+    #   preinstall: "scripts/preinstall.sh"
+    #   postinstall: "scripts/postinstall.sh"
+    #   preremove: "scripts/preremove.sh"
+    #   postremove: "scripts/postremove.sh"
+
+    # Some attributes can be overrided per package format.
+    #overrides:
+    #  deb:
+    #    conflicts:
+    #      - subversion
+    #    dependencies:
+    #      - git
+    #    suggests:
+    #      - gitk
+    #    recommends:
+    #      - tig
+    #    empty_folders:
+    #    - /var/log/bar
+    #  rpm:
+    #    replacements:
+    #      amd64: x86_64
+    #    name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Arch }}"
+    #    files:
+    #      "tmp/man.gz": "/usr/share/man/man8/app.8.gz"
+    #    config_files:
+    #      "tmp/app_generated.conf": "/etc/app-rpm.conf"
+    #    scripts:
+    #      preinstall: "scripts/preinstall-rpm.sh"
