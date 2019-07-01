@@ -22,13 +22,9 @@ func TestState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := state.Status, 0; got != want {
-		t.Errorf("bad status: got %d, want %d", got, want)
-	}
 	if got, want := string(state.Offset), ""; got != want {
 		t.Errorf("bad offset: got %s, want %s", got, want)
 	}
-	state.Status = 1
 	state.Offset = json.Number(fmt.Sprintf("%d", 0xBEEF))
 	if err := setState(state, stateFile); err != nil {
 		t.Fatal(err)
@@ -39,9 +35,6 @@ func TestState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got, want := state.Status, 1; got != want {
-		t.Errorf("bad status: got %d, want %d", got, want)
-	}
 	if got, want := string(state.Offset), fmt.Sprintf("%d", 0xBEEF); got != want {
 		t.Errorf("bad offset: got %s, want %s", got, want)
 	}

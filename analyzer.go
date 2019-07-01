@@ -84,11 +84,14 @@ func (a *Analyzer) startProducer(ctx context.Context) <-chan []byte {
 		defer wg.Done()
 		for scanner.Scan() {
 			line := scanner.Bytes()
+			// Copy the line, since the scanner can reclaim it
+			lineCopy := make([]byte, len(line))
+			copy(lineCopy, line)
 			select {
 			case <-ctx.Done():
 				close(result)
 				return
-			case result <- line:
+			case result <- lineCopy:
 			}
 		}
 		if err := scanner.Err(); err != nil {

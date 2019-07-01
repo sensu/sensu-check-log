@@ -10,18 +10,17 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"time"
 
 	sensu "github.com/sensu/sensu-go/api/core/v2"
 )
 
 var (
-	logFile     = flag.String("log", "", "path to log file")
+	logFile     = flag.String("log", "", "path to log file (required)")
 	procs       = flag.Int("procs", runtime.NumCPU(), "number of parallel analyzer processes")
-	match       = flag.String("match", "", "RE2 regexp matcher expression")
+	match       = flag.String("match", "", "RE2 regexp matcher expression (required)")
 	stateFile   = flag.String("state", "", "state file for incremental log analysis (required)")
 	eventStatus = flag.Int("event-status", 1, "event status on positive match")
-	eventsAPI   = flag.String("api-url", "http://localhost:3031", "agent events API URL")
+	eventsAPI   = flag.String("api-url", "http://localhost:3031/events", "agent events API URL")
 	maxBytes    = flag.Int64("max-bytes", 0, "max number of bytes to read (0 means unlimited)")
 )
 
@@ -33,7 +32,6 @@ const (
 
 type State struct {
 	Offset json.Number `json:"offset"`
-	Status int         `json:"status"`
 }
 
 func getState(path string) (state State, err error) {
@@ -89,19 +87,13 @@ func testFlags() {
 func main() {
 	testFlags()
 
-	timer := time.NewTimer(5 * time.Second)
-	go func() {
-		if _, ok := <-timer.C; ok {
-			fatal("failed to read from stdin. (did you set 'stdin: true' on check config?)")
-		}
-	}()
-
 	var inputEvent sensu.Event
 	if err := json.NewDecoder(os.Stdin).Decode(&inputEvent); err != nil {
+		if err == io.EOF {
+			fatal("couldn't read input event - check stdin must be enabled")
+		}
 		fatal("error decoding input event: %s", err)
 	}
-
-	timer.Stop()
 
 	f, err := os.Open(*logFile)
 	if err != nil {
@@ -139,7 +131,7 @@ func main() {
 	eventBuf := new(bytes.Buffer)
 	enc := json.NewEncoder(eventBuf)
 
-	status := state.Status
+	status := StatusOK
 
 	for result := range results {
 		if result.Err != nil {
@@ -151,7 +143,7 @@ func main() {
 		status = *eventStatus
 	}
 
-	if status != state.Status {
+	if status != StatusOK {
 		if err := sendEvent(*eventsAPI, &inputEvent, status, eventBuf.String()); err != nil {
 			fatal("error sending event: %s", err)
 		}
