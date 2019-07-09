@@ -1,6 +1,8 @@
 sensu-check-log
 ===============
 
+TravisCI: [![TravisCI Build Status](https://travis-ci.org/sensu/sensu-check-log.svg?branch=master)](https://travis-ci.org/sensu/sensu-check-log)
+
 `sensu-check-log` is a log file analyzer plugin for Sensu Go. The program scans
 a log file, checks it for matches, and sends a special failure event to the
 agent events API when a match is detected.
