@@ -1,8 +1,6 @@
 sensu-check-log
 ===============
 
-CircleCI: [![CircleCI Build Status](https://circleci.com/gh/sensu/sensu-check-log/tree/master.svg?style=svg)](https://circleci.com/gh/sensu/sensu-check-log/tree/master)
-
 `sensu-check-log` is a log file analyzer plugin for Sensu Go. The program scans
 a log file, checks it for matches, and sends a special failure event to the
 agent events API when a match is detected.
