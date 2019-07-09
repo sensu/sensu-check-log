@@ -26,4 +26,4 @@ after_deploy:
 env:
   global:
   - secure: FIXME
-  - GO111MODULE: on
+  - GO111MODULE: 'on'
