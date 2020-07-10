@@ -37,6 +37,8 @@ checksum:
 
 archives:
   - format: tar.gz
+    id: release-archive
+    name_template: "{{.ProjectName}}-v{{.Version}}"
     files:
       - LICENSE
       - README.md
