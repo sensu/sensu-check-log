@@ -42,7 +42,9 @@ func getState(path string) (state State, err error) {
 		}
 		return state, fmt.Errorf("couldn't read state file: %s", err)
 	}
-	defer f.Close()
+	defer func() {
+		err = f.Close()
+	}()
 	if err := json.NewDecoder(f).Decode(&state); err != nil {
 		return state, fmt.Errorf("couldn't read state file: %s", err)
 	}

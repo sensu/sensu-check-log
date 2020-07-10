@@ -15,7 +15,7 @@ func TestState(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		os.RemoveAll(td)
+		_ = os.RemoveAll(td)
 	}()
 	stateFile := filepath.Join(td, "state")
 	state, err := getState(stateFile)

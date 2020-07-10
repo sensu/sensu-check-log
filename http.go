@@ -37,7 +37,9 @@ func sendEvent(path string, inputEvent *sensu.Event, status int, results string)
 	if err != nil {
 		return fmt.Errorf("error writing event: %s", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if status := resp.StatusCode; status >= 400 {
 		b, _ := ioutil.ReadAll(io.LimitReader(resp.Body, 1<<20))
