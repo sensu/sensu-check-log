@@ -3,6 +3,7 @@ module github.com/sensu/sensu-check-log
 go 1.12
 
 require (
+	github.com/ashb/jqrepl v0.1.1-0.20191002212509-a54fde65e2d3
 	github.com/coreos/etcd v3.3.13+incompatible // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
@@ -10,6 +11,7 @@ require (
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/json-iterator/go v1.1.6 // indirect
+	github.com/jzelinskie/faq v0.0.0-20200605202710-881ea8ccec0e
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/robertkrimen/otto v0.0.0-20180617131154-15f95af6e78d // indirect

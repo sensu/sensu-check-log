@@ -18,6 +18,7 @@ var (
 	logFile     = flag.String("log", "", "path to log file (required)")
 	procs       = flag.Int("procs", runtime.NumCPU(), "number of parallel analyzer processes")
 	match       = flag.String("match", "", "RE2 regexp matcher expression (required)")
+	matchJQ     = flag.String("jq", "", "jq expression")
 	stateFile   = flag.String("state", "", "state file for incremental log analysis (required)")
 	eventStatus = flag.Int("event-status", 1, "event status on positive match")
 	eventsAPI   = flag.String("api-url", "http://localhost:3031/events", "agent events API URL")
@@ -81,8 +82,11 @@ func testFlags() {
 	if *stateFile == "" {
 		fatal("-state not specified")
 	}
-	if *match == "" {
-		fatal("-match not specified")
+	if *match == "" && *matchJQ == "" {
+		fatal("neither -match nor -jq specified")
+	}
+	if *match != "" && *matchJQ != "" {
+		fatal("both -match and -jq specified, choose only one")
 	}
 }
 
@@ -126,7 +130,11 @@ func main() {
 	analyzer := Analyzer{
 		Procs: *procs,
 		Log:   reader,
-		Func:  AnalyzeRegexp(*match),
+	}
+	if *match != "" {
+		analyzer.Func = AnalyzeRegexp(*match)
+	} else {
+		analyzer.Func = AnalyzeJQ(*matchJQ)
 	}
 
 	results := analyzer.Go(context.Background())
