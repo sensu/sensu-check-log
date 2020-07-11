@@ -63,11 +63,6 @@ nfpms:
     # Default is empty.
     license: MIT
 
-    # Formats to be generated.
-    formats:
-      - deb
-      - rpm
-
     # Packages your package depends on.
     dependencies: []
 
