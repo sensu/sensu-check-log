@@ -18,12 +18,12 @@ builds:
   -  "entity.system.arch == '386'"
 
 - platform: "linux"
-  arch: "arm"
-  asset_filename: "#{repo}_#{version}_linux_arm.tar.gz"
+  arch: "armv7"
+  asset_filename: "#{repo}_#{version}_linux_armv7.tar.gz"
   sha_filename: "#{repo}_#{version}_sha512-checksums.txt"
   filter:
   -  "entity.system.os == 'linux'"
-  -  "entity.system.arch == 'arm'"
+  -  "entity.system.arch == 'armv7'"
 
 - platform: "linux"
   arch: "arm64"
