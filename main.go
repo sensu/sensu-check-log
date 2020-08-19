@@ -15,21 +15,26 @@ import (
 )
 
 var (
-	logFile     = flag.String("log", "", "path to log file (required)")
-	procs       = flag.Int("procs", runtime.NumCPU(), "number of parallel analyzer processes")
-	match       = flag.String("match", "", "RE2 regexp matcher expression (required)")
-	stateFile   = flag.String("state", "", "state file for incremental log analysis (required)")
-	eventStatus = flag.Int("event-status", 1, "event status on positive match")
-	eventsAPI   = flag.String("api-url", "http://localhost:3031/events", "agent events API URL")
-	maxBytes    = flag.Int64("max-bytes", 0, "max number of bytes to read (0 means unlimited)")
+	logFile          = flag.String("log", "", "path to log file (required)")
+	procs            = flag.Int("procs", runtime.NumCPU(), "number of parallel analyzer processes")
+	match            = flag.String("match", "", "RE2 regexp matcher expression (required)")
+	stateFile        = flag.String("state", "", "state file for incremental log analysis (required)")
+	eventStatus      = flag.Int("event-status", 1, "event status on positive match")
+	eventsAPI        = flag.String("api-url", "http://localhost:3031/events", "agent events API URL")
+	maxBytes         = flag.Int64("max-bytes", 0, "max number of bytes to read (0 means unlimited)")
+	ignoreInitialRun = flag.Bool("ignore-initial-run", false, "suppresses alerts for any matches found on the first run of the plugin")
 )
 
 const (
-	StatusOK   = 0
+	// StatusOK represents a 0 exit status
+	StatusOK = 0
+	// StatusWarn represents a 1 exit status
 	StatusWarn = 1
+	// StatusCrit represents a 2 exit status
 	StatusCrit = 2
 )
 
+// State represents the state file offset
 type State struct {
 	Offset json.Number `json:"offset"`
 }
@@ -146,8 +151,11 @@ func main() {
 	}
 
 	if status != StatusOK {
-		if err := sendEvent(*eventsAPI, &inputEvent, status, eventBuf.String()); err != nil {
-			fatal("error sending event: %s", err)
+		// supress alerts on first run (when offset is 0) only when configured (with -ignore-initial-run)
+		if !(offset == 0 && *ignoreInitialRun) {
+			if err := sendEvent(*eventsAPI, &inputEvent, status, eventBuf.String()); err != nil {
+				fatal("error sending event: %s", err)
+			}
 		}
 	}
 
