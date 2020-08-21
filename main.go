@@ -102,6 +102,19 @@ func main() {
 		fatal("error decoding input event: %s", err)
 	}
 
+	state, err := getState(*stateFile)
+	if err != nil {
+		fatal("%s", err)
+	}
+
+	// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
+	if state == (State{}) && *ignoreInitialRun {
+		if err := setState(state, *stateFile); err != nil {
+			fatal("%s", err)
+		}
+		return
+	}
+
 	f, err := os.Open(*logFile)
 	if err != nil {
 		fatal("couldn't open log file: %s", err)
@@ -112,10 +125,6 @@ func main() {
 		}
 	}()
 
-	state, err := getState(*stateFile)
-	if err != nil {
-		fatal("%s", err)
-	}
 	offset, _ := state.Offset.Int64()
 	if offset > 0 {
 		if _, err := f.Seek(offset, io.SeekStart); err != nil {
@@ -151,11 +160,8 @@ func main() {
 	}
 
 	if status != StatusOK {
-		// supress alerts on first run (when offset is 0) only when configured (with -ignore-initial-run)
-		if !(offset == 0 && *ignoreInitialRun) {
-			if err := sendEvent(*eventsAPI, &inputEvent, status, eventBuf.String()); err != nil {
-				fatal("error sending event: %s", err)
-			}
+		if err := sendEvent(*eventsAPI, &inputEvent, status, eventBuf.String()); err != nil {
+			fatal("error sending event: %s", err)
 		}
 	}
 
