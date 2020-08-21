@@ -107,14 +107,6 @@ func main() {
 		fatal("%s", err)
 	}
 
-	// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
-	if state == (State{}) && *ignoreInitialRun {
-		if err := setState(state, *stateFile); err != nil {
-			fatal("%s", err)
-		}
-		return
-	}
-
 	f, err := os.Open(*logFile)
 	if err != nil {
 		fatal("couldn't open log file: %s", err)
@@ -124,6 +116,19 @@ func main() {
 			fatal("error closing log file: %s", err)
 		}
 	}()
+
+	// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
+	if state == (State{}) && *ignoreInitialRun {
+		info, err := f.Stat()
+		if err != nil {
+			fatal("%s", err)
+		}
+		state.Offset = json.Number(fmt.Sprintf("%d", info.Size()))
+		if err := setState(state, *stateFile); err != nil {
+			fatal("%s", err)
+		}
+		return
+	}
 
 	offset, _ := state.Offset.Int64()
 	if offset > 0 {
