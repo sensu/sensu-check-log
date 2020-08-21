@@ -102,11 +102,6 @@ func main() {
 		fatal("error decoding input event: %s", err)
 	}
 
-	state, err := getState(*stateFile)
-	if err != nil {
-		fatal("%s", err)
-	}
-
 	f, err := os.Open(*logFile)
 	if err != nil {
 		fatal("couldn't open log file: %s", err)
@@ -116,6 +111,11 @@ func main() {
 			fatal("error closing log file: %s", err)
 		}
 	}()
+
+	state, err := getState(*stateFile)
+	if err != nil {
+		fatal("%s", err)
+	}
 
 	// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
 	if state == (State{}) && *ignoreInitialRun {
