@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add `-ignore-initial-run` flag to suppress alerts on the first run.
 
 ### Changed
-* Update CHANGELOG.md with more context and examples.
+* Update README.md with more context and examples.
 
 ## [0.1.2] - 2019-07-01
 
