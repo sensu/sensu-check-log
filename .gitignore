@@ -3,6 +3,7 @@ target/
 coverage.txt
 *~
 \#*
+sensu-check-log
 
 # misc
 .DS_Store
