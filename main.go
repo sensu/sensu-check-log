@@ -378,10 +378,13 @@ func executeCheck(event *types.Event) (int, error) {
 			log.Println("stateFile", stateFile)
 		}
 		state, err := getState(stateFile)
+		// Do we need to reset the state because the requested MatchExpr is different?
 		if state.MatchExpr != "" && state.MatchExpr != plugin.MatchExpr {
 			if plugin.EnableStateReset {
 				state = State{}
-				log.Printf("Info: resetting state file %s because unexpected cached MatchExpr detected and --reset-state in use", file)
+				if plugin.Verbose {
+					log.Printf("Info: resetting state file %s because unexpected cached MatchExpr detected and --reset-state in use", file)
+				}
 			} else {
 				file_errors = append(file_errors, file)
 				log.Printf("Error: state file for %s has unexpected cached MatchExpr: %s expected: %s\nEither use --reset-state option, or manually delete state file %s", file, state.MatchExpr, plugin.MatchExpr, stateFile)
@@ -414,10 +417,13 @@ func executeCheck(event *types.Event) (int, error) {
 		offset, _ := state.Offset.Int64()
 		if info.ModTime().Unix() > state.LastTime {
 			if plugin.Verbose {
-				log.Printf("File Modifed since last read")
+				log.Printf("Info: File %s modifed since last read", file)
 			}
 		}
-		if offset > info.Size() && info.ModTime().Unix() > state.LastTime {
+		// Are we looking at freshly rotated file since last time we run?
+		// Modification time newer than last read and last read offset at or beyond end of file?
+		// If so let's reset the offset back to 0 and read the file again
+		if offset >= info.Size() && info.ModTime().Unix() > state.LastTime {
 			offset = 0
 			if plugin.Verbose {
 				log.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
