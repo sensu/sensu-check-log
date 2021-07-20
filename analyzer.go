@@ -128,6 +128,8 @@ func (a *Analyzer) consumer(ctx context.Context, producer <-chan []byte, results
 	}
 }
 
+/*
 func NoopAnalyzerFunc(line []byte) *Result {
 	return nil
 }
+*/

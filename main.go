@@ -4,39 +4,163 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
+	"regexp"
 	"runtime"
+	"strings"
+	"time"
 
-	sensu "github.com/sensu/sensu-go/api/core/v2"
+	"github.com/sensu/sensu-go/types"
+	"github.com/sensu/sensu-plugin-sdk/sensu"
 )
+
+// Config represents the check plugin config.
+type Config struct {
+	sensu.PluginConfig
+	LogFile          string
+	LogFileExpr      string
+	LogPath          string
+	StateDir         string
+	Procs            int
+	MatchExpr        string
+	MatchStatus      int
+	MaxBytes         int64
+	EventsAPI        string
+	IgnoreInitialRun bool
+	DryRun           bool
+	Verbose          bool
+}
 
 var (
-	logFile          = flag.String("log", "", "path to log file (required)")
-	procs            = flag.Int("procs", runtime.NumCPU(), "number of parallel analyzer processes")
-	match            = flag.String("match", "", "RE2 regexp matcher expression (required)")
-	stateFile        = flag.String("state", "", "state file for incremental log analysis (required)")
-	eventStatus      = flag.Int("event-status", 1, "event status on positive match")
-	eventsAPI        = flag.String("api-url", "http://localhost:3031/events", "agent events API URL")
-	maxBytes         = flag.Int64("max-bytes", 0, "max number of bytes to read (0 means unlimited)")
-	ignoreInitialRun = flag.Bool("ignore-initial-run", false, "suppresses alerts for any matches found on the first run of the plugin")
-)
+	useStdin = false
+	logs     = []string{}
+	plugin   = Config{
+		PluginConfig: sensu.PluginConfig{
+			Name:     "sensu-check-log",
+			Short:    "Check Log",
+			Keyspace: "sensu.io/plugins/sensu-check-log/config",
+		},
+	}
 
-const (
-	// StatusOK represents a 0 exit status
-	StatusOK = 0
-	// StatusWarn represents a 1 exit status
-	StatusWarn = 1
-	// StatusCrit represents a 2 exit status
-	StatusCrit = 2
+	options = []*sensu.PluginConfigOption{
+		&sensu.PluginConfigOption{
+			Path:      "log-file",
+			Env:       "CHECK_LOG_FILE",
+			Argument:  "log-file",
+			Shorthand: "f",
+			Default:   "",
+			Usage:     "Log file to check. (Required if --log-file-expr not used)",
+			Value:     &plugin.LogFile,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "log-file-expr",
+			Env:       "CHECK_LOG_FILE_EXPR",
+			Argument:  "log-file-expr",
+			Shorthand: "e",
+			Default:   "",
+			Usage:     "Log file regexp to check. (Required if --log-file not used)",
+			Value:     &plugin.LogFileExpr,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "log-path",
+			Env:       "CHECK_LOG_PATH",
+			Argument:  "log-path",
+			Shorthand: "p",
+			Default:   "",
+			Usage:     "Log path for basis of log file regexp. (Required if --log-file-expr used)",
+			Value:     &plugin.LogPath,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "state-directory",
+			Env:       "CHECK_LOG_STATE_DIRECTORY",
+			Argument:  "state-directory",
+			Shorthand: "d",
+			Default:   "",
+			Usage:     "Directory where check will hold state for each processed log file. (Required)",
+			Value:     &plugin.StateDir,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "analyzer-procs",
+			Env:       "CHECK_LOG_ANALYZER_PROCS",
+			Argument:  "analyzer-procs",
+			Shorthand: "a",
+			Default:   runtime.NumCPU(),
+			Usage:     "Number of parallel analyzer processes per file.",
+			Value:     &plugin.Procs,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "match-expr",
+			Env:       "CHECK_LOG_MATCH_EXPR",
+			Argument:  "match-string",
+			Shorthand: "m",
+			Default:   "",
+			Usage:     "RE2 regexp matcher expression. (required)",
+			Value:     &plugin.MatchExpr,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "match-event-status",
+			Env:       "CHECK_LOG_MATCH_EVENT_STATUS",
+			Argument:  "match-event-status",
+			Shorthand: "s",
+			Default:   1,
+			Usage:     "RE2 regexp matcher expression.",
+			Value:     &plugin.MatchStatus,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "max-bytes",
+			Env:       "CHECK_LOG_MAX_BYTES",
+			Argument:  "max-bytes",
+			Shorthand: "b",
+			Default:   int64(0),
+			Usage:     "Max number of bytes to read (0 means unlimited).",
+			Value:     &plugin.MaxBytes,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "events-api-url",
+			Env:       "CHECK_LOG_EVENTS_API_URL",
+			Argument:  "events-api-url",
+			Shorthand: "u",
+			Default:   "http://localhost:3031/events",
+			Usage:     "Agent Events API URL.",
+			Value:     &plugin.EventsAPI,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "ignore-initial-run",
+			Env:       "CHECK_LOG_IGNORE_INITIAL_RUN",
+			Argument:  "ignore-initial-run",
+			Shorthand: "i",
+			Default:   false,
+			Usage:     "Suppresses alerts for any matches found on the first run of the plugin.",
+			Value:     &plugin.IgnoreInitialRun,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "dry-run",
+			Argument:  "dry-run",
+			Shorthand: "n",
+			Default:   false,
+			Usage:     "Suppress generation of events and report intended actions instead. (implies verbose)",
+			Value:     &plugin.DryRun,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "verbose",
+			Argument:  "verbose",
+			Shorthand: "v",
+			Default:   false,
+			Usage:     "Verbose output, useful for testing.",
+			Value:     &plugin.Verbose,
+		},
+	}
 )
 
 // State represents the state file offset
 type State struct {
-	Offset json.Number `json:"offset"`
+	Offset   json.Number `json:"offset"`
+	LastTime int64       `json:"last_time"`
+	ModTime  int64       `json:"mod_time"`
 }
 
 func getState(path string) (state State, err error) {
@@ -78,102 +202,233 @@ func fatal(formatter string, args ...interface{}) {
 	os.Exit(2)
 }
 
-func testFlags() {
-	flag.Parse()
-	if *logFile == "" {
-		fatal("-log not specified")
+func checkArgs(event *types.Event) (int, error) {
+	if plugin.LogFileExpr == "" && plugin.LogFile == "" {
+		return sensu.CheckStateCritical, fmt.Errorf("At least one of --log-file or --log-file-expr must be specified")
 	}
-	if *stateFile == "" {
-		fatal("-state not specified")
+	if plugin.LogFileExpr != "" && plugin.LogPath == "" {
+		return sensu.CheckStateCritical, fmt.Errorf("--log-path must be specified if --log-file-expr is used")
 	}
-	if *match == "" {
-		fatal("-match not specified")
+	if plugin.StateDir == "" {
+		return sensu.CheckStateCritical, fmt.Errorf("--state-directory not specified")
 	}
+	if plugin.MatchExpr == "" {
+		return sensu.CheckStateCritical, fmt.Errorf("--match-expr not specified")
+	}
+	if plugin.DryRun {
+		plugin.Verbose = true
+		log.Printf("LogFileExpr: %s StatDir: %s\n", plugin.LogFileExpr, plugin.StateDir)
+	}
+	return sensu.CheckStateOK, nil
 }
 
 func main() {
-	testFlags()
-
-	var inputEvent sensu.Event
-	if err := json.NewDecoder(os.Stdin).Decode(&inputEvent); err != nil {
-		if err == io.EOF {
-			fatal("couldn't read input event - check stdin must be enabled")
-		}
-		fatal("error decoding input event: %s", err)
-	}
-
-	f, err := os.Open(*logFile)
+	fi, err := os.Stdin.Stat()
 	if err != nil {
-		fatal("couldn't open log file: %s", err)
+		fmt.Printf("Error accessing stdin: %v\n", err)
+		panic(err)
 	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			fatal("error closing log file: %s", err)
+	//Check the Mode bitmask for Named Pipe to indicate stdin is connected
+	if fi.Mode()&os.ModeNamedPipe != 0 {
+		useStdin = true
+	}
+
+	check := sensu.NewGoCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
+	check.Execute()
+}
+
+func removeDuplicates(elements []string) []string { // change string to int here if required
+	// Use map to record duplicates as we find them.
+	encountered := map[string]bool{} // change string to int here if required
+	result := []string{}             // change string to int here if required
+
+	for v := range elements {
+		if encountered[elements[v]] {
+			// Do not add duplicate.
+		} else {
+			// Record this element as an encountered element.
+			encountered[elements[v]] = true
+			// Append to result slice.
+			result = append(result, elements[v])
 		}
-	}()
-
-	state, err := getState(*stateFile)
-	if err != nil {
-		fatal("%s", err)
 	}
+	// Return the new slice.
+	return result
+}
 
-	// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
-	if state == (State{}) && *ignoreInitialRun {
+func buildLogArray() error {
+	var e error
+	if plugin.LogFile != "" {
+		absPath, _ := filepath.Abs(plugin.LogFile)
+		if filepath.IsAbs(absPath) {
+			logs = append(logs, absPath)
+		} else {
+			return fmt.Errorf("Path %s not absolute", absPath)
+		}
+
+	}
+	if len(plugin.LogPath) > 0 && len(plugin.LogFileExpr) > 0 {
+		logRegExp, e := regexp.Compile(plugin.LogFileExpr)
+		if e != nil {
+			return e
+		}
+		absLogPath, _ := filepath.Abs(plugin.LogPath)
+
+		if filepath.IsAbs(absLogPath) {
+			e = filepath.Walk(absLogPath, func(path string, info os.FileInfo, err error) error {
+				if err == nil && logRegExp.MatchString(info.Name()) {
+					if filepath.IsAbs(path) {
+						logs = append(logs, path)
+					} else {
+						return fmt.Errorf("Path %s not absolute", path)
+					}
+				}
+				return nil
+			})
+			if e != nil {
+				return e
+			}
+		}
+	}
+	logs = removeDuplicates(logs)
+	if plugin.Verbose {
+		log.Printf("Log file array to process: %v", logs)
+	}
+	return e
+}
+
+func executeCheck(event *types.Event) (int, error) {
+	e := buildLogArray()
+	if e != nil {
+		return sensu.CheckStateCritical, e
+	}
+	file_errors := []string{}
+
+	for _, file := range logs {
+		if !filepath.IsAbs(file) {
+			file_errors = append(file_errors, file)
+			log.Printf("error file %s: is not absolute path", file)
+			continue
+		}
+		if plugin.Verbose {
+			log.Printf("Processing: %v", file)
+		}
+		f, err := os.Open(file)
+		if err != nil {
+			file_errors = append(file_errors, file)
+			log.Printf("error couldn't open log file %s: %s", file, err)
+			continue
+		}
+		defer func() {
+			if err := f.Close(); err != nil {
+				file_errors = append(file_errors, file)
+				log.Printf("error couldn't close log file %s: %s", file, err)
+			}
+		}()
+
+		stateFile := filepath.Join(plugin.StateDir, strings.ReplaceAll(file, string(os.PathSeparator), string("_")))
+		if plugin.Verbose {
+			log.Println("stateFile", stateFile)
+		}
+		state, err := getState(stateFile)
+		if err != nil {
+			file_errors = append(file_errors, file)
+			log.Printf("error couldn't get state for log file %s: %s", file, err)
+			continue
+		}
 		info, err := f.Stat()
 		if err != nil {
+			file_errors = append(file_errors, file)
+			log.Printf("error couldn't get info for file %s: %s", file, err)
+			continue
+		}
+		// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
+		if state == (State{}) && plugin.IgnoreInitialRun {
+			state.Offset = json.Number(fmt.Sprintf("%d", info.Size()))
+			if err := setState(state, stateFile); err != nil {
+				file_errors = append(file_errors, file)
+				log.Printf("error couldn't set state for log file %s: %s", file, err)
+				continue
+			}
+			continue
+		}
+
+		offset, _ := state.Offset.Int64()
+		if info.ModTime().Unix() > state.LastTime {
+			if plugin.Verbose {
+				log.Printf("File Modifed since last read")
+			}
+		}
+		if offset > info.Size() && info.ModTime().Unix() > state.LastTime {
+			offset = 0
+			if plugin.Verbose {
+				log.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
+			}
+		}
+		log.Printf("Starting Offset: %v", offset)
+		state.LastTime = time.Now().Unix()
+		if offset > 0 {
+			if _, err := f.Seek(offset, io.SeekStart); err != nil {
+				file_errors = append(file_errors, file)
+				log.Printf("error couldn't seek file %s to offset %d: %s", file, offset, err)
+				continue
+			}
+		}
+		var reader io.Reader = f
+		if plugin.MaxBytes > 0 {
+			reader = io.LimitReader(f, plugin.MaxBytes)
+		}
+
+		analyzer := Analyzer{
+			Procs: plugin.Procs,
+			Log:   reader,
+			Func:  AnalyzeRegexp(plugin.MatchExpr),
+		}
+
+		results := analyzer.Go(context.Background())
+		eventBuf := new(bytes.Buffer)
+		enc := json.NewEncoder(eventBuf)
+
+		status := sensu.CheckStateOK
+
+		for result := range results {
+			if result.Err != nil {
+				status = sensu.CheckStateCritical
+			}
+			if err := enc.Encode(result); err != nil {
+				file_errors = append(file_errors, file)
+				log.Printf("error couldn't encode result %s for file %s: %s", result, file, err)
+				continue
+			}
+			status = plugin.MatchStatus
+		}
+		if plugin.Verbose {
+			log.Printf("File %s Match Status %v", file, status)
+		}
+		if status != sensu.CheckStateOK {
+			if event == nil {
+				log.Printf("Error: Input event not defined. Event generation aborted for file %s", file)
+				file_errors = append(file_errors, file)
+				continue
+			}
+			if !plugin.DryRun && event != nil {
+				if err := sendEvent(plugin.EventsAPI, event, status, eventBuf.String()); err != nil {
+					fatal("error sending event: %s", err)
+				}
+			}
+		}
+
+		bytesRead := analyzer.BytesRead()
+		state.Offset = json.Number(fmt.Sprintf("%d", offset+bytesRead))
+		log.Printf("Ending Offset: %v", state.Offset)
+
+		if err := setState(state, stateFile); err != nil {
 			fatal("%s", err)
 		}
-		state.Offset = json.Number(fmt.Sprintf("%d", info.Size()))
-		if err := setState(state, *stateFile); err != nil {
-			fatal("%s", err)
-		}
-		return
+	}
+	if len(file_errors) > 0 {
+		return sensu.CheckStateWarning, nil
 	}
 
-	offset, _ := state.Offset.Int64()
-	if offset > 0 {
-		if _, err := f.Seek(offset, io.SeekStart); err != nil {
-			fatal("couldn't seek to offset %d: %s", offset, err)
-		}
-	}
-
-	var reader io.Reader = f
-	if *maxBytes > 0 {
-		reader = io.LimitReader(f, *maxBytes)
-	}
-
-	analyzer := Analyzer{
-		Procs: *procs,
-		Log:   reader,
-		Func:  AnalyzeRegexp(*match),
-	}
-
-	results := analyzer.Go(context.Background())
-	eventBuf := new(bytes.Buffer)
-	enc := json.NewEncoder(eventBuf)
-
-	status := StatusOK
-
-	for result := range results {
-		if result.Err != nil {
-			status = StatusCrit
-		}
-		if err := enc.Encode(result); err != nil {
-			fatal("%s", err)
-		}
-		status = *eventStatus
-	}
-
-	if status != StatusOK {
-		if err := sendEvent(*eventsAPI, &inputEvent, status, eventBuf.String()); err != nil {
-			fatal("error sending event: %s", err)
-		}
-	}
-
-	bytesRead := analyzer.BytesRead()
-	state.Offset = json.Number(fmt.Sprintf("%d", offset+bytesRead))
-
-	if err := setState(state, *stateFile); err != nil {
-		fatal("%s", err)
-	}
+	return sensu.CheckStateOK, nil
 }

@@ -39,3 +39,22 @@ func TestState(t *testing.T) {
 		t.Errorf("bad offset: got %s, want %s", got, want)
 	}
 }
+
+func TestBuildLogArray(t *testing.T) {
+	err := buildLogArray()
+	if err != nil {
+		t.Errorf("BuildLogArray err: %s", err)
+	}
+	plugin.LogFile = "./testingdata/test.log"
+	plugin.LogPath = "testingdata/"
+	plugin.LogFileExpr = "test.log"
+	plugin.Verbose = true
+	err = buildLogArray()
+	if err != nil {
+		t.Errorf("BuildLogArray err: %s", err)
+	}
+	if len(logs) != 1 {
+		t.Errorf("BuildLogArray len %v", len(logs))
+	}
+
+}

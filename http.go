@@ -10,14 +10,14 @@ import (
 	"net/http"
 	"time"
 
-	sensu "github.com/sensu/sensu-go/api/core/v2"
+	"github.com/sensu/sensu-go/types"
 )
 
-func sendEvent(path string, inputEvent *sensu.Event, status int, results string) error {
+func sendEvent(path string, inputEvent *types.Event, status int, results string) error {
 	if status < 0 {
 		return errors.New("negative status")
 	}
-	outputEvent := sensu.Event{Entity: inputEvent.Entity}
+	outputEvent := types.Event{Entity: inputEvent.Entity}
 	outputEvent.Namespace = inputEvent.Namespace
 	check := inputEvent.Check
 	outputEvent.Check = check
