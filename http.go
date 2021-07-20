@@ -3,31 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"time"
 
 	"github.com/sensu/sensu-go/types"
 )
 
-func sendEvent(path string, inputEvent *types.Event, status int, checkNameTemplate string, results string) error {
-	if status < 0 {
-		return errors.New("negative status")
-	}
-	// Let's construct the check name from template
-	outputEvent := types.Event{Entity: inputEvent.Entity}
-	outputEvent.Namespace = inputEvent.Namespace
-	check := inputEvent.Check
-	outputEvent.Check = check
-	check.Executed = time.Now().Unix()
-	check.Issued = inputEvent.Check.Issued
-	check.Command = inputEvent.Check.Command
-	check.Name = fmt.Sprintf("%s-failure", check.Name)
-	check.Output = results
-	check.Status = uint32(status)
+func sendEvent(path string, outputEvent *types.Event) error {
 
 	b, err := json.Marshal(outputEvent)
 	if err != nil {

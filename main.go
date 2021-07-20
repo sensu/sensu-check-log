@@ -40,9 +40,10 @@ type Config struct {
 }
 
 var (
-	useStdin = false
-	logs     = []string{}
-	plugin   = Config{
+	useStdin            = false
+	defaultNameTemplate = "{{ .Check.Name }}-alert"
+	logs                = []string{}
+	plugin              = Config{
 		PluginConfig: sensu.PluginConfig{
 			Name:     "sensu-check-log",
 			Short:    "Check Log",
@@ -155,7 +156,7 @@ var (
 			Env:       "CHECK_LOG_CHECK_NAME_TEMPLATE",
 			Argument:  "check-name-template",
 			Shorthand: "t",
-			Default:   "{{ .check.name }}-alert",
+			Default:   defaultNameTemplate,
 			Usage:     "Check name to use in generated events",
 			Value:     &plugin.CheckNameTemplate,
 		},
@@ -475,10 +476,16 @@ func executeCheck(event *types.Event) (int, error) {
 			log.Printf("Error: Input event not defined. Event generation aborted")
 			return sensu.CheckStateWarning, nil
 		}
+		outputEvent, err := CreateEvent(event, status, plugin.CheckNameTemplate, eventBuf.String())
+		if err != nil {
+			log.Printf("Error creating event: %s", err)
+			return sensu.CheckStateWarning, nil
+		}
 		if plugin.DryRun {
+			log.Printf("Dry-run enabled, event to send: %+v", outputEvent)
 		} else {
 			if event != nil && !plugin.DisableEvent {
-				if err := sendEvent(plugin.EventsAPI, event, status, plugin.CheckNameTemplate, eventBuf.String()); err != nil {
+				if err := sendEvent(plugin.EventsAPI, outputEvent); err != nil {
 					log.Printf("Error sending event: %s", err)
 					return sensu.CheckStateWarning, nil
 				}
