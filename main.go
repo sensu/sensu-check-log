@@ -21,18 +21,22 @@ import (
 // Config represents the check plugin config.
 type Config struct {
 	sensu.PluginConfig
-	LogFile          string
-	LogFileExpr      string
-	LogPath          string
-	StateDir         string
-	Procs            int
-	MatchExpr        string
-	MatchStatus      int
-	MaxBytes         int64
-	EventsAPI        string
-	IgnoreInitialRun bool
-	DryRun           bool
-	Verbose          bool
+	LogFile           string
+	LogFileExpr       string
+	LogPath           string
+	StateDir          string
+	Procs             int
+	MatchExpr         string
+	MatchStatus       int
+	MaxBytes          int64
+	EventsAPI         string
+	IgnoreInitialRun  bool
+	DisableEvent      bool
+	DryRun            bool
+	Verbose           bool
+	GenerateNewEvents bool
+	EnableStateReset  bool
+	CheckNameTemplate string
 }
 
 var (
@@ -80,7 +84,7 @@ var (
 			Argument:  "state-directory",
 			Shorthand: "d",
 			Default:   "",
-			Usage:     "Directory where check will hold state for each processed log file. (Required)",
+			Usage:     "Directory where check will hold state for each processed log file. Note: checks using different match expressions should use different state directories to avoid conflict. (Required)",
 			Value:     &plugin.StateDir,
 		},
 		&sensu.PluginConfigOption{
@@ -138,12 +142,48 @@ var (
 			Value:     &plugin.IgnoreInitialRun,
 		},
 		&sensu.PluginConfigOption{
+			Path:      "generate-new-events",
+			Env:       "CHECK_LOG_GENERATE_NEW_EVENTS",
+			Argument:  "generate-new-events",
+			Shorthand: "g",
+			Default:   false,
+			Usage:     "Generate new events on match, requires check to be configured with stdin: True",
+			Value:     &plugin.GenerateNewEvents,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "check-name-tamplate",
+			Env:       "CHECK_LOG_CHECK_NAME_TEMPLATE",
+			Argument:  "check-name-template",
+			Shorthand: "t",
+			Default:   "{{ .check.name }}-alert",
+			Usage:     "Check name to use in generated events",
+			Value:     &plugin.CheckNameTemplate,
+		},
+		&sensu.PluginConfigOption{
 			Path:      "dry-run",
 			Argument:  "dry-run",
 			Shorthand: "n",
 			Default:   false,
 			Usage:     "Suppress generation of events and report intended actions instead. (implies verbose)",
 			Value:     &plugin.DryRun,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "disable-event-generation",
+			Env:       "CHECK_LOG_CHECK_DISABLE_EVENT_GENERATION",
+			Argument:  "disable-event-generation",
+			Shorthand: "D",
+			Default:   false,
+			Usage:     "Disable event generation, send results to stdout instead.",
+			Value:     &plugin.DisableEvent,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "reset-state",
+			Env:       "CHECK_LOG_CHECK_RESET_STATE",
+			Argument:  "reset-state",
+			Shorthand: "r",
+			Default:   false,
+			Usage:     "Allow automatic state reset if match expression changes, instead of failing.",
+			Value:     &plugin.EnableStateReset,
 		},
 		&sensu.PluginConfigOption{
 			Path:      "verbose",
@@ -158,9 +198,10 @@ var (
 
 // State represents the state file offset
 type State struct {
-	Offset   json.Number `json:"offset"`
-	LastTime int64       `json:"last_time"`
-	ModTime  int64       `json:"mod_time"`
+	Offset    json.Number `json:"offset"`
+	LastTime  int64       `json:"last_time"`
+	ModTime   int64       `json:"mod_time"`
+	MatchExpr string      `json:"match_expr"`
 }
 
 func getState(path string) (state State, err error) {
@@ -304,6 +345,11 @@ func executeCheck(event *types.Event) (int, error) {
 	}
 	file_errors := []string{}
 
+	eventBuf := new(bytes.Buffer)
+	enc := json.NewEncoder(eventBuf)
+
+	status := sensu.CheckStateOK
+
 	for _, file := range logs {
 		if !filepath.IsAbs(file) {
 			file_errors = append(file_errors, file)
@@ -331,6 +377,16 @@ func executeCheck(event *types.Event) (int, error) {
 			log.Println("stateFile", stateFile)
 		}
 		state, err := getState(stateFile)
+		if state.MatchExpr != "" && state.MatchExpr != plugin.MatchExpr {
+			if plugin.EnableStateReset {
+				state = State{}
+				log.Printf("Info: resetting state file %s because unexpected cached MatchExpr detected and --reset-state in use", file)
+			} else {
+				file_errors = append(file_errors, file)
+				log.Printf("Error: state file for %s has unexpected cached MatchExpr: %s expected: %s\nEither use --reset-state option, or manually delete state file %s", file, state.MatchExpr, plugin.MatchExpr, stateFile)
+				continue
+			}
+		}
 		if err != nil {
 			file_errors = append(file_errors, file)
 			log.Printf("error couldn't get state for log file %s: %s", file, err)
@@ -345,6 +401,7 @@ func executeCheck(event *types.Event) (int, error) {
 		// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
 		if state == (State{}) && plugin.IgnoreInitialRun {
 			state.Offset = json.Number(fmt.Sprintf("%d", info.Size()))
+			state.MatchExpr = plugin.MatchExpr
 			if err := setState(state, stateFile); err != nil {
 				file_errors = append(file_errors, file)
 				log.Printf("error couldn't set state for log file %s: %s", file, err)
@@ -365,7 +422,6 @@ func executeCheck(event *types.Event) (int, error) {
 				log.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
 			}
 		}
-		log.Printf("Starting Offset: %v", offset)
 		state.LastTime = time.Now().Unix()
 		if offset > 0 {
 			if _, err := f.Seek(offset, io.SeekStart); err != nil {
@@ -380,16 +436,13 @@ func executeCheck(event *types.Event) (int, error) {
 		}
 
 		analyzer := Analyzer{
+			Path:  file,
 			Procs: plugin.Procs,
 			Log:   reader,
 			Func:  AnalyzeRegexp(plugin.MatchExpr),
 		}
 
 		results := analyzer.Go(context.Background())
-		eventBuf := new(bytes.Buffer)
-		enc := json.NewEncoder(eventBuf)
-
-		status := sensu.CheckStateOK
 
 		for result := range results {
 			if result.Err != nil {
@@ -397,7 +450,7 @@ func executeCheck(event *types.Event) (int, error) {
 			}
 			if err := enc.Encode(result); err != nil {
 				file_errors = append(file_errors, file)
-				log.Printf("error couldn't encode result %s for file %s: %s", result, file, err)
+				log.Printf("error couldn't encode result %s for file %s: %s", result, result.Path, err)
 				continue
 			}
 			status = plugin.MatchStatus
@@ -405,27 +458,37 @@ func executeCheck(event *types.Event) (int, error) {
 		if plugin.Verbose {
 			log.Printf("File %s Match Status %v", file, status)
 		}
-		if status != sensu.CheckStateOK {
-			if event == nil {
-				log.Printf("Error: Input event not defined. Event generation aborted for file %s", file)
-				file_errors = append(file_errors, file)
-				continue
-			}
-			if !plugin.DryRun && event != nil {
-				if err := sendEvent(plugin.EventsAPI, event, status, eventBuf.String()); err != nil {
-					fatal("error sending event: %s", err)
-				}
-			}
-		}
-
 		bytesRead := analyzer.BytesRead()
 		state.Offset = json.Number(fmt.Sprintf("%d", offset+bytesRead))
-		log.Printf("Ending Offset: %v", state.Offset)
+		state.MatchExpr = plugin.MatchExpr
 
 		if err := setState(state, stateFile); err != nil {
-			fatal("%s", err)
+			log.Printf("Error setting state: %s", err)
+			file_errors = append(file_errors, file)
+			continue
+		}
+	} // end of loop over log files
+
+	// sendEvent or report to stdout
+	if status != sensu.CheckStateOK {
+		if event == nil {
+			log.Printf("Error: Input event not defined. Event generation aborted")
+			return sensu.CheckStateWarning, nil
+		}
+		if plugin.DryRun {
+		} else {
+			if event != nil && !plugin.DisableEvent {
+				if err := sendEvent(plugin.EventsAPI, event, status, plugin.CheckNameTemplate, eventBuf.String()); err != nil {
+					log.Printf("Error sending event: %s", err)
+					return sensu.CheckStateWarning, nil
+				}
+			} else {
+				log.Printf("Error: Input event not defined. Event generation aborted")
+				return sensu.CheckStateWarning, nil
+			}
 		}
 	}
+
 	if len(file_errors) > 0 {
 		return sensu.CheckStateWarning, nil
 	}

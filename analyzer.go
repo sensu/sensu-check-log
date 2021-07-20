@@ -12,6 +12,7 @@ const bufSize = 1000
 
 type Analyzer struct {
 	Procs     int
+	Path      string
 	Log       io.Reader
 	Func      AnalyzerFunc
 	bytesRead int64
@@ -48,6 +49,7 @@ func NewDiscardWriter() *DiscardWriter {
 type AnalyzerFunc func([]byte) *Result
 
 type Result struct {
+	Path  string `json:"path"`
 	Match string `json:"match"`
 	Err   error  `json:"error,omitempty"`
 }
@@ -119,6 +121,7 @@ func (a *Analyzer) consumer(ctx context.Context, producer <-chan []byte, results
 			}
 			result := a.Func(line)
 			if result != nil {
+				result.Path = a.Path
 				select {
 				case results <- *result:
 				case <-ctx.Done():

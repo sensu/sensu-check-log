@@ -51,7 +51,7 @@ func TestSendEvent(t *testing.T) {
 	server := httptest.NewServer(testHandler{t: t, event: event})
 	defer server.Close()
 
-	if err := sendEvent(server.URL+"/events", event, 1, "output"); err != nil {
+	if err := sendEvent(server.URL+"/events", event, 1, "test_check", "output"); err != nil {
 		t.Fatal(err)
 	}
 }

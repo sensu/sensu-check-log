@@ -13,10 +13,11 @@ import (
 	"github.com/sensu/sensu-go/types"
 )
 
-func sendEvent(path string, inputEvent *types.Event, status int, results string) error {
+func sendEvent(path string, inputEvent *types.Event, status int, checkNameTemplate string, results string) error {
 	if status < 0 {
 		return errors.New("negative status")
 	}
+	// Let's construct the check name from template
 	outputEvent := types.Event{Entity: inputEvent.Entity}
 	outputEvent.Namespace = inputEvent.Namespace
 	check := inputEvent.Check
