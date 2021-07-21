@@ -79,6 +79,7 @@ Flags:
 |--events-api-url           |CHECK_LOG_EVENTS_API_URL           |
 |--disable-event-generation |CHECK_LOG_DISABLE_EVENT_GENERATION |
 |--ignore-initial-run       |CHECK_LOG_IGNORE_INITIAL_RUN       |
+|--inverse-match            |CHECK_LOG_INVERSE_MATCH            |
 |--reset-state              |CHECK_LOG_RESET_STATE              |
 
 ### Event generation
