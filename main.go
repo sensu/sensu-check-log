@@ -236,10 +236,8 @@ func fatal(formatter string, args ...interface{}) {
 }
 
 func checkArgs(event *types.Event) (int, error) {
-	if event == nil {
-		if !(plugin.DryRun || plugin.DisableEvent) {
-			return sensu.CheckStateCritical, fmt.Errorf("Event not found on stdin and neither --dry-run nor --disable-event-generation selected")
-		}
+	if event == nil && !plugin.DisableEvent {
+		return sensu.CheckStateCritical, fmt.Errorf("--disable-event-generation not selected but event missing from stdin")
 	}
 	if plugin.LogFileExpr == "" && plugin.LogFile == "" {
 		return sensu.CheckStateCritical, fmt.Errorf("At least one of --log-file or --log-file-expr must be specified")
@@ -478,6 +476,13 @@ func executeCheck(event *types.Event) (int, error) {
 
 	// sendEvent or report to stdout
 	if status != sensu.CheckStateOK {
+		//if event generation disabled just output the results as this check's output
+		if plugin.DisableEvent {
+			fmt.Printf("%s\n", eventBuf.String())
+			return status, nil
+		}
+
+		// proceed with event generation
 		if event == nil {
 			log.Printf("Error: Input event not defined. Event generation aborted")
 			return sensu.CheckStateWarning, nil
@@ -487,16 +492,13 @@ func executeCheck(event *types.Event) (int, error) {
 			log.Printf("Error creating event: %s", err)
 			return sensu.CheckStateWarning, nil
 		}
+
+		// if --dry-run selected lets report what we would have sent instead of sending.
 		if plugin.DryRun {
-			log.Printf("Dry-run enabled, event to send: %+v", outputEvent)
+			log.Printf("Dry-run enabled, event to send:\n%+v", outputEvent)
 		} else {
-			if event != nil && !plugin.DisableEvent {
-				if err := sendEvent(plugin.EventsAPI, outputEvent); err != nil {
-					log.Printf("Error sending event: %s", err)
-					return sensu.CheckStateWarning, nil
-				}
-			} else {
-				log.Printf("Error: Input event not defined. Event generation aborted")
+			if err := sendEvent(plugin.EventsAPI, outputEvent); err != nil {
+				log.Printf("Error sending event: %s", err)
 				return sensu.CheckStateWarning, nil
 			}
 		}
