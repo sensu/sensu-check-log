@@ -137,7 +137,7 @@ following command to add the asset:
 sensuctl asset add sensu/sensu-check-log
 ```
 
-If you're using an earlier version of sensuctl, you can find the asset on the [Bonsai Asset Index][https://bonsai.sensu.io/assets/sensu/sensu-opcua-checks].
+If you're using an earlier version of sensuctl, you can find the asset on the [Bonsai Asset Index][https://bonsai.sensu.io/assets/sensu/sensu-check-log].
 
 ### Check definition
 
@@ -181,7 +181,7 @@ The preferred way of installing and deploying this plugin is to use it as an Ass
 like to compile and install the plugin from source or contribute to it, download the latest version
 or create an executable script from this source.
 
-From the local path of the sensu-opcua-checks repository:
+From the local path of the sensu-check-log repository:
 
 ```
 go build
