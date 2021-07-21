@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -34,7 +35,6 @@ type Config struct {
 	DisableEvent      bool
 	DryRun            bool
 	Verbose           bool
-	GenerateNewEvents bool
 	EnableStateReset  bool
 	CheckNameTemplate string
 }
@@ -100,7 +100,7 @@ var (
 		&sensu.PluginConfigOption{
 			Path:      "match-expr",
 			Env:       "CHECK_LOG_MATCH_EXPR",
-			Argument:  "match-string",
+			Argument:  "match-expr",
 			Shorthand: "m",
 			Default:   "",
 			Usage:     "RE2 regexp matcher expression. (required)",
@@ -112,7 +112,7 @@ var (
 			Argument:  "match-event-status",
 			Shorthand: "s",
 			Default:   1,
-			Usage:     "RE2 regexp matcher expression.",
+			Usage:     "Event status to return on match in generated event.",
 			Value:     &plugin.MatchStatus,
 		},
 		&sensu.PluginConfigOption{
@@ -143,15 +143,6 @@ var (
 			Value:     &plugin.IgnoreInitialRun,
 		},
 		&sensu.PluginConfigOption{
-			Path:      "generate-new-events",
-			Env:       "CHECK_LOG_GENERATE_NEW_EVENTS",
-			Argument:  "generate-new-events",
-			Shorthand: "g",
-			Default:   false,
-			Usage:     "Generate new events on match, requires check to be configured with stdin: True",
-			Value:     &plugin.GenerateNewEvents,
-		},
-		&sensu.PluginConfigOption{
 			Path:      "check-name-tamplate",
 			Env:       "CHECK_LOG_CHECK_NAME_TEMPLATE",
 			Argument:  "check-name-template",
@@ -159,14 +150,6 @@ var (
 			Default:   defaultNameTemplate,
 			Usage:     "Check name to use in generated events",
 			Value:     &plugin.CheckNameTemplate,
-		},
-		&sensu.PluginConfigOption{
-			Path:      "dry-run",
-			Argument:  "dry-run",
-			Shorthand: "n",
-			Default:   false,
-			Usage:     "Suppress generation of events and report intended actions instead. (implies verbose)",
-			Value:     &plugin.DryRun,
 		},
 		&sensu.PluginConfigOption{
 			Path:      "disable-event-generation",
@@ -193,6 +176,14 @@ var (
 			Default:   false,
 			Usage:     "Verbose output, useful for testing.",
 			Value:     &plugin.Verbose,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "dry-run",
+			Argument:  "dry-run",
+			Shorthand: "n",
+			Default:   false,
+			Usage:     "Suppress generation of events and report intended actions instead. (implies verbose)",
+			Value:     &plugin.DryRun,
 		},
 	}
 )
@@ -254,12 +245,16 @@ func checkArgs(event *types.Event) (int, error) {
 	if plugin.StateDir == "" {
 		return sensu.CheckStateCritical, fmt.Errorf("--state-directory not specified")
 	}
+	_, err := os.Stat(plugin.StateDir)
+	if errors.Is(err, os.ErrNotExist) {
+		return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist", plugin.StateDir)
+	}
 	if plugin.MatchExpr == "" {
 		return sensu.CheckStateCritical, fmt.Errorf("--match-expr not specified")
 	}
 	if plugin.DryRun {
 		plugin.Verbose = true
-		log.Printf("LogFileExpr: %s StatDir: %s\n", plugin.LogFileExpr, plugin.StateDir)
+		log.Printf("LogFileExpr: %s StateDir: %s\n", plugin.LogFileExpr, plugin.StateDir)
 	}
 	return sensu.CheckStateOK, nil
 }
@@ -378,6 +373,11 @@ func executeCheck(event *types.Event) (int, error) {
 			log.Println("stateFile", stateFile)
 		}
 		state, err := getState(stateFile)
+		if err != nil {
+			file_errors = append(file_errors, file)
+			log.Printf("error couldn't get state for log file %s: %s", file, err)
+			continue
+		}
 		// Do we need to reset the state because the requested MatchExpr is different?
 		if state.MatchExpr != "" && state.MatchExpr != plugin.MatchExpr {
 			if plugin.EnableStateReset {
@@ -390,11 +390,6 @@ func executeCheck(event *types.Event) (int, error) {
 				log.Printf("Error: state file for %s has unexpected cached MatchExpr: %s expected: %s\nEither use --reset-state option, or manually delete state file %s", file, state.MatchExpr, plugin.MatchExpr, stateFile)
 				continue
 			}
-		}
-		if err != nil {
-			file_errors = append(file_errors, file)
-			log.Printf("error couldn't get state for log file %s: %s", file, err)
-			continue
 		}
 		info, err := f.Stat()
 		if err != nil {
