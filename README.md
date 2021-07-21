@@ -3,7 +3,7 @@
 ![goreleaser](https://github.com/sensu/sensu-check-log/workflows/goreleaser/badge.svg)
 
 
-# Sensu OPC-UA Checks
+# sensu-check-log
 
 ## Table of Contents
 - [Overview](#overview)
