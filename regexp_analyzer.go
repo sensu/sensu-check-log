@@ -17,9 +17,6 @@ func AnalyzeRegexp(pattern string) AnalyzerFunc {
 		if !inverse && re.Match(b) {
 			return &Result{Match: string(b), Inverse: inverse}
 		}
-		if re.Match(b) {
-		} else {
-		}
 		return nil
 	}
 }

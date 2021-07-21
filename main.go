@@ -473,7 +473,7 @@ func executeCheck(event *types.Event) (int, error) {
 			}
 			if err := enc.Encode(result); err != nil {
 				file_errors = append(file_errors, file)
-				log.Printf("error couldn't encode result %s for file %s: %s", result, result.Path, err)
+				log.Printf("error couldn't encode result %+v for file %s: %s", result, result.Path, err)
 				continue
 			}
 			status = plugin.MatchStatus
