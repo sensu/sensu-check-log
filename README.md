@@ -1,6 +1,6 @@
-[![Sensu Bonsai Asset](https://img.shields.io/badge/Bonsai-Download%20Me-brightgreen.svg?colorB=89C967&logo=sensu)](https://bonsai.sensu.io/assets/sensu/sensu-log-check)
-![Go Test](https://github.com/sensu/sensu-log-check/workflows/Go%20Test/badge.svg)
-![goreleaser](https://github.com/sensu/sensu-log-check/workflows/goreleaser/badge.svg)
+[![Sensu Bonsai Asset](https://img.shields.io/badge/Bonsai-Download%20Me-brightgreen.svg?colorB=89C967&logo=sensu)](https://bonsai.sensu.io/assets/sensu/sensu-check-log)
+![Go Test](https://github.com/sensu/sensu-check-log/workflows/Go%20Test/badge.svg)
+![goreleaser](https://github.com/sensu/sensu-check-log/workflows/goreleaser/badge.svg)
 
 
 # Sensu OPC-UA Checks
@@ -31,7 +31,7 @@ some reason (ex: if one of the files can not be read)
 
 ## Usage examples
 
-### sensu-log-check
+### sensu-check-log
 ```
 Check Log
 
