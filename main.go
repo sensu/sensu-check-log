@@ -236,6 +236,11 @@ func fatal(formatter string, args ...interface{}) {
 }
 
 func checkArgs(event *types.Event) (int, error) {
+	if event == nil {
+		if !(plugin.DryRun || plugin.DisableEvent) {
+			return sensu.CheckStateCritical, fmt.Errorf("Event not found on stdin and neither --dry-run nor --disable-event-generation selected")
+		}
+	}
 	if plugin.LogFileExpr == "" && plugin.LogFile == "" {
 		return sensu.CheckStateCritical, fmt.Errorf("At least one of --log-file or --log-file-expr must be specified")
 	}
