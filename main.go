@@ -487,7 +487,7 @@ func executeCheck(event *types.Event) (int, error) {
 			log.Printf("Error: Input event not defined. Event generation aborted")
 			return sensu.CheckStateWarning, nil
 		}
-		outputEvent, err := CreateEvent(event, status, plugin.CheckNameTemplate, eventBuf.String())
+		outputEvent, err := createEvent(event, status, plugin.CheckNameTemplate, eventBuf.String())
 		if err != nil {
 			log.Printf("Error creating event: %s", err)
 			return sensu.CheckStateWarning, nil

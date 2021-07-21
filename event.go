@@ -8,7 +8,7 @@ import (
 	"github.com/sensu/sensu-plugin-sdk/templates"
 )
 
-func CreateEvent(inputEvent *types.Event, status int, checkNameTemplate string, results string) (*types.Event, error) {
+func createEvent(inputEvent *types.Event, status int, checkNameTemplate string, results string) (*types.Event, error) {
 	if status < 0 {
 		return nil, errors.New("negative status")
 	}
