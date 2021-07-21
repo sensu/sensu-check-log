@@ -29,6 +29,7 @@ type Config struct {
 	Procs             int
 	MatchExpr         string
 	MatchStatus       int
+	InverseMatch      bool
 	MaxBytes          int64
 	EventsAPI         string
 	IgnoreInitialRun  bool
@@ -137,7 +138,7 @@ var (
 			Path:      "ignore-initial-run",
 			Env:       "CHECK_LOG_IGNORE_INITIAL_RUN",
 			Argument:  "ignore-initial-run",
-			Shorthand: "i",
+			Shorthand: "I",
 			Default:   false,
 			Usage:     "Suppresses alerts for any matches found on the first run of the plugin.",
 			Value:     &plugin.IgnoreInitialRun,
@@ -162,12 +163,21 @@ var (
 		},
 		&sensu.PluginConfigOption{
 			Path:      "reset-state",
-			Env:       "CHECK_LOG_CHECK_RESET_STATE",
+			Env:       "CHECK_LOG_RESET_STATE",
 			Argument:  "reset-state",
 			Shorthand: "r",
 			Default:   false,
 			Usage:     "Allow automatic state reset if match expression changes, instead of failing.",
 			Value:     &plugin.EnableStateReset,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "inverse-match",
+			Env:       "CHECK_LOG_INVERSE_MATCH",
+			Argument:  "inverse-match",
+			Shorthand: "i",
+			Default:   false,
+			Usage:     "Inverse match, only generate alert event if no lines match.",
+			Value:     &plugin.InverseMatch,
 		},
 		&sensu.PluginConfigOption{
 			Path:      "verbose",
@@ -190,10 +200,11 @@ var (
 
 // State represents the state file offset
 type State struct {
-	Offset    json.Number `json:"offset"`
-	LastTime  int64       `json:"last_time"`
-	ModTime   int64       `json:"mod_time"`
-	MatchExpr string      `json:"match_expr"`
+	Offset       json.Number `json:"offset"`
+	LastTime     int64       `json:"last_time"`
+	ModTime      int64       `json:"mod_time"`
+	MatchExpr    string      `json:"match_expr"`
+	InverseMatch bool        `json:"inverse_match"`
 }
 
 func getState(path string) (state State, err error) {
@@ -381,16 +392,23 @@ func executeCheck(event *types.Event) (int, error) {
 			log.Printf("error couldn't get state for log file %s: %s", file, err)
 			continue
 		}
-		// Do we need to reset the state because the requested MatchExpr is different?
+		// Do we need to reset the state because the requested MatchExpr or InverseMatch is different?
+		resetState := false
 		if state.MatchExpr != "" && state.MatchExpr != plugin.MatchExpr {
+			resetState = true
+		}
+		if state.InverseMatch != plugin.InverseMatch {
+			resetState = true
+		}
+		if resetState {
 			if plugin.EnableStateReset {
 				state = State{}
 				if plugin.Verbose {
-					log.Printf("Info: resetting state file %s because unexpected cached MatchExpr detected and --reset-state in use", file)
+					log.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use", file)
 				}
 			} else {
 				file_errors = append(file_errors, file)
-				log.Printf("Error: state file for %s has unexpected cached MatchExpr: %s expected: %s\nEither use --reset-state option, or manually delete state file %s", file, state.MatchExpr, plugin.MatchExpr, stateFile)
+				log.Printf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v\nEither use --reset-state option, or manually delete state file %s", file, state.MatchExpr, state.InverseMatch, stateFile)
 				continue
 			}
 		}

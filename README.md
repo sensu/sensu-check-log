@@ -55,7 +55,8 @@ Flags:
   -t, --check-name-template string   Check name to use in generated events (default "{{ .Check.Name }}-alert")
   -u, --events-api-url string        Agent Events API URL. (default "http://localhost:3031/events")
   -D, --disable-event-generation     Disable event generation, send results to stdout instead.
-  -i, --ignore-initial-run           Suppresses alerts for any matches found on the first run of the plugin.
+  -I, --ignore-initial-run           Suppresses alerts for any matches found on the first run of the plugin.
+  -i, --inverse-match                Inverse match, only generate alert event if no lines match.
   -r, --reset-state                  Allow automatic state reset if match expression changes, instead of failing.
   -n, --dry-run                      Suppress generation of events and report intended actions instead. (implies verbose)
   -v, --verbose                      Verbose output, useful for testing.
@@ -150,7 +151,23 @@ api_version: core/v2
 metadata:
   name: sensu-check-log
 spec:
-  command: sensu-check-log -f /var/log/messages.log -m "(?i)error" -d /tmp/sensu-check-log/
+  command: sensu-check-log -f /var/log/messages.log -m "(?i)error" -d /tmp/sensu-check-log-error/
+  stdin: true
+  runtime_assets:
+  - sensu/sensu-check-log
+
+```
+
+Example of configuring a check configuration to match lines without the word 'success' in a case-insensitive manner using [RE compatible regexp syntax][11]"
+
+```yml
+---
+type: CheckConfig
+api_version: core/v2
+metadata:
+  name: sensu-check-log
+spec:
+  command: sensu-check-log -f /var/log/messages.log -m "(?i)success" -i -d /tmp/sensu-check-log-not-success/
   stdin: true
   runtime_assets:
   - sensu/sensu-check-log

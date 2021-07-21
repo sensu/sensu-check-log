@@ -49,9 +49,10 @@ func NewDiscardWriter() *DiscardWriter {
 type AnalyzerFunc func([]byte) *Result
 
 type Result struct {
-	Path  string `json:"path"`
-	Match string `json:"match"`
-	Err   error  `json:"error,omitempty"`
+	Path    string `json:"path"`
+	Match   string `json:"match"`
+	Err     error  `json:"error,omitempty"`
+	Inverse bool   `json:"inverse,omitempty"`
 }
 
 func (a *Analyzer) Go(ctx context.Context) <-chan Result {
