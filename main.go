@@ -310,7 +310,10 @@ func removeDuplicates(elements []string) []string { // change string to int here
 func buildLogArray() error {
 	var e error
 	if plugin.LogFile != "" {
-		absPath, _ := filepath.Abs(plugin.LogFile)
+		absPath, e := filepath.Abs(plugin.LogFile)
+		if e != nil {
+			return e
+		}
 		if filepath.IsAbs(absPath) {
 			logs = append(logs, absPath)
 		} else {
