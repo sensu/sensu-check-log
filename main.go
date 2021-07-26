@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -200,11 +201,11 @@ var (
 
 // State represents the state file offset
 type State struct {
-	Offset       json.Number `json:"offset"`
-	LastTime     int64       `json:"last_time"`
-	ModTime      int64       `json:"mod_time"`
-	MatchExpr    string      `json:"match_expr"`
-	InverseMatch bool        `json:"inverse_match"`
+	Offset       int64
+	LastTime     int64
+	ModTime      int64
+	MatchExpr    string
+	InverseMatch bool
 }
 
 func getState(path string) (state State, err error) {
@@ -218,9 +219,11 @@ func getState(path string) (state State, err error) {
 	defer func() {
 		err = f.Close()
 	}()
-	if err := json.NewDecoder(f).Decode(&state); err != nil {
+
+	if err := gob.NewDecoder(f).Decode(&state); err != nil {
 		return state, fmt.Errorf("couldn't read state file: %s", err)
 	}
+
 	return state, nil
 }
 
@@ -235,7 +238,7 @@ func setState(cur State, path string) (err error) {
 			err = fmt.Errorf("couldn't close state file: %s", err)
 		}
 	}()
-	if err := json.NewEncoder(f).Encode(cur); err != nil {
+	if err := gob.NewEncoder(f).Encode(cur); err != nil {
 		return fmt.Errorf("couldn't write state file: %s", err)
 	}
 	return nil
@@ -423,7 +426,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 		}
 		// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
 		if state == (State{}) && plugin.IgnoreInitialRun {
-			state.Offset = json.Number(fmt.Sprintf("%d", info.Size()))
+			state.Offset = int64(info.Size())
 			state.MatchExpr = plugin.MatchExpr
 			if err := setState(state, stateFile); err != nil {
 				fileErrors = append(fileErrors, file)
@@ -433,7 +436,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 			continue
 		}
 
-		offset, _ := state.Offset.Int64()
+		offset := state.Offset
 		if info.ModTime().Unix() > state.LastTime {
 			if plugin.Verbose {
 				log.Printf("Info: File %s modifed since last read", file)
@@ -485,7 +488,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 			log.Printf("File %s Match Status %v", file, status)
 		}
 		bytesRead := analyzer.BytesRead()
-		state.Offset = json.Number(fmt.Sprintf("%d", offset+bytesRead))
+		state.Offset = int64(offset + bytesRead)
 		state.MatchExpr = plugin.MatchExpr
 
 		if err := setState(state, stateFile); err != nil {

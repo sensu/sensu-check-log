@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,10 +20,10 @@ func TestState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := string(state.Offset), ""; got != want {
-		t.Errorf("bad offset: got %s, want %s", got, want)
+	if got, want := state.Offset, int64(0); got != want {
+		t.Errorf("bad offset: got %v, want %v", got, want)
 	}
-	state.Offset = json.Number(fmt.Sprintf("%d", 0xBEEF))
+	state.Offset = int64(0xBEEF)
 	if err := setState(state, stateFile); err != nil {
 		t.Fatal(err)
 	}
@@ -35,8 +33,8 @@ func TestState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got, want := string(state.Offset), fmt.Sprintf("%d", 0xBEEF); got != want {
-		t.Errorf("bad offset: got %s, want %s", got, want)
+	if got, want := state.Offset, int64(0xBEEF); got != want {
+		t.Errorf("bad offset: got %v, want %v", got, want)
 	}
 }
 
