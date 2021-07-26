@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sensu/sensu-go/types"
+	corev2 "github.com/sensu/sensu-go/api/core/v2"
 	"github.com/sensu/sensu-plugin-sdk/sensu"
 )
 
@@ -246,7 +246,7 @@ func fatal(formatter string, args ...interface{}) {
 	os.Exit(2)
 }
 
-func checkArgs(event *types.Event) (int, error) {
+func checkArgs(event *corev2.Event) (int, error) {
 	if event == nil && !plugin.DisableEvent {
 		return sensu.CheckStateCritical, fmt.Errorf("--disable-event-generation not selected but event missing from stdin")
 	}
@@ -348,7 +348,7 @@ func buildLogArray() error {
 	return e
 }
 
-func executeCheck(event *types.Event) (int, error) {
+func executeCheck(event *corev2.Event) (int, error) {
 	e := buildLogArray()
 	if e != nil {
 		return sensu.CheckStateCritical, e

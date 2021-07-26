@@ -8,10 +8,10 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/sensu/sensu-go/types"
+	corev2 "github.com/sensu/sensu-go/api/core/v2"
 )
 
-func sendEvent(path string, outputEvent *types.Event) error {
+func sendEvent(path string, outputEvent *corev2.Event) error {
 
 	b, err := json.Marshal(outputEvent)
 	if err != nil {

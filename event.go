@@ -4,11 +4,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/sensu/sensu-go/types"
+	corev2 "github.com/sensu/sensu-go/api/core/v2"
 	"github.com/sensu/sensu-plugin-sdk/templates"
 )
 
-func createEvent(inputEvent *types.Event, status int, checkNameTemplate string, results string) (*types.Event, error) {
+func createEvent(inputEvent *corev2.Event, status int, checkNameTemplate string, results string) (*corev2.Event, error) {
 	if status < 0 {
 		return nil, errors.New("negative status")
 	}
@@ -17,7 +17,7 @@ func createEvent(inputEvent *types.Event, status int, checkNameTemplate string, 
 	if err != nil {
 		return nil, err
 	}
-	outputEvent := types.Event{Entity: inputEvent.Entity}
+	outputEvent := corev2.Event{Entity: inputEvent.Entity}
 	outputEvent.Namespace = inputEvent.Namespace
 	check := inputEvent.Check
 	outputEvent.Check = check

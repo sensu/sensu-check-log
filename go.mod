@@ -10,7 +10,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/sensu/sensu-go/api/core/v2 v2.3.0
-	github.com/sensu/sensu-go/types v0.3.0
 	github.com/sensu/sensu-plugin-sdk v0.13.1
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7 // indirect
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
