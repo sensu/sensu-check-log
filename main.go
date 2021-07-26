@@ -356,7 +356,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 	if e != nil {
 		return sensu.CheckStateCritical, e
 	}
-	file_errors := []string{}
+	fileErrors := []string{}
 
 	eventBuf := new(bytes.Buffer)
 	enc := json.NewEncoder(eventBuf)
@@ -365,7 +365,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 
 	for _, file := range logs {
 		if !filepath.IsAbs(file) {
-			file_errors = append(file_errors, file)
+			fileErrors = append(fileErrors, file)
 			log.Printf("error file %s: is not absolute path", file)
 			continue
 		}
@@ -374,13 +374,13 @@ func executeCheck(event *corev2.Event) (int, error) {
 		}
 		f, err := os.Open(file)
 		if err != nil {
-			file_errors = append(file_errors, file)
+			fileErrors = append(fileErrors, file)
 			log.Printf("error couldn't open log file %s: %s", file, err)
 			continue
 		}
 		defer func() {
 			if err := f.Close(); err != nil {
-				file_errors = append(file_errors, file)
+				fileErrors = append(fileErrors, file)
 				log.Printf("error couldn't close log file %s: %s", file, err)
 			}
 		}()
@@ -391,7 +391,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 		}
 		state, err := getState(stateFile)
 		if err != nil {
-			file_errors = append(file_errors, file)
+			fileErrors = append(fileErrors, file)
 			log.Printf("error couldn't get state for log file %s: %s", file, err)
 			continue
 		}
@@ -410,14 +410,14 @@ func executeCheck(event *corev2.Event) (int, error) {
 					log.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use", file)
 				}
 			} else {
-				file_errors = append(file_errors, file)
+				fileErrors = append(fileErrors, file)
 				log.Printf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v\nEither use --reset-state option, or manually delete state file %s", file, state.MatchExpr, state.InverseMatch, stateFile)
 				continue
 			}
 		}
 		info, err := f.Stat()
 		if err != nil {
-			file_errors = append(file_errors, file)
+			fileErrors = append(fileErrors, file)
 			log.Printf("error couldn't get info for file %s: %s", file, err)
 			continue
 		}
@@ -426,7 +426,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 			state.Offset = json.Number(fmt.Sprintf("%d", info.Size()))
 			state.MatchExpr = plugin.MatchExpr
 			if err := setState(state, stateFile); err != nil {
-				file_errors = append(file_errors, file)
+				fileErrors = append(fileErrors, file)
 				log.Printf("error couldn't set state for log file %s: %s", file, err)
 				continue
 			}
@@ -451,7 +451,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 		state.LastTime = time.Now().Unix()
 		if offset > 0 {
 			if _, err := f.Seek(offset, io.SeekStart); err != nil {
-				file_errors = append(file_errors, file)
+				fileErrors = append(fileErrors, file)
 				log.Printf("error couldn't seek file %s to offset %d: %s", file, offset, err)
 				continue
 			}
@@ -475,7 +475,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 				status = sensu.CheckStateCritical
 			}
 			if err := enc.Encode(result); err != nil {
-				file_errors = append(file_errors, file)
+				fileErrors = append(fileErrors, file)
 				log.Printf("error couldn't encode result %+v for file %s: %s", result, result.Path, err)
 				continue
 			}
@@ -490,7 +490,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 
 		if err := setState(state, stateFile); err != nil {
 			log.Printf("Error setting state: %s", err)
-			file_errors = append(file_errors, file)
+			fileErrors = append(fileErrors, file)
 			continue
 		}
 	} // end of loop over log files
@@ -525,7 +525,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 		}
 	}
 
-	if len(file_errors) > 0 {
+	if len(fileErrors) > 0 {
 		return sensu.CheckStateWarning, nil
 	}
 
