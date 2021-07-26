@@ -76,8 +76,8 @@ var (
 			Env:       "CHECK_LOG_PATH",
 			Argument:  "log-path",
 			Shorthand: "p",
-			Default:   "",
-			Usage:     "Log path for basis of log file regexp. (Required if --log-file-expr used)",
+			Default:   "/var/log/",
+			Usage:     "Log path for basis of log file regexp. Only finds files under this path. (Required if --log-file-expr used)",
 			Value:     &plugin.LogPath,
 		},
 		&sensu.PluginConfigOption{

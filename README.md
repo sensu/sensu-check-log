@@ -47,8 +47,8 @@ Flags:
   -d, --state-directory string       Directory where check will hold state for each processed log file. Note: checks using different match expressions should use different state directories to avoid conflict. (Required)
   -f, --log-file string              Log file to check. (Required if --log-file-expr not used)
   -e, --log-file-expr string         Log file regexp to check. (Required if --log-file not used)
-  -p, --log-path string              Log path for basis of log file regexp. (Required if --log-file-expr used)
   -m, --match-expr string            RE2 regexp matcher expression. (required)
+  -p, --log-path string              Log path for basis of log file regexp. Only finds files under this path. (Required if --log-file-expr used) (default "/var/log/")
   -s, --match-event-status int       Event status to return on match in generated event. (default 1)
   -b, --max-bytes int                Max number of bytes to read (0 means unlimited).
   -a, --analyzer-procs int           Number of parallel analyzer processes per file. 
