@@ -412,7 +412,6 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 
 	offset := state.Offset
 	// Are we looking at freshly rotated file since last time we run?
-	// Modification time newer than last read and last read offset at or beyond end of file?
 	// If so let's reset the offset back to 0 and read the file again
 	if offset >= info.Size() {
 		offset = 0
