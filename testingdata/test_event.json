@@ -1,0 +1,231 @@
+{
+  "entity": {
+    "entity_class": "agent",
+    "system": {
+      "hostname": "carbon",
+      "os": "linux",
+      "platform": "fedora",
+      "platform_family": "fedora",
+      "platform_version": "33",
+      "network": {
+        "interfaces": [
+          {
+            "name": "lo",
+            "addresses": [
+              "127.0.0.1/8",
+              "::1/128"
+            ]
+          },
+          {
+            "name": "enp0s31f6",
+            "mac": "f8:75:a4:69:9e:31",
+            "addresses": null
+          },
+          {
+            "name": "wlp0s20f3",
+            "mac": "98:af:65:e7:1b:2a",
+            "addresses": [
+              "192.168.0.57/24",
+              "fe80::3de2:e4be:c0e3:f9a4/64"
+            ]
+          },
+          {
+            "name": "virbr0",
+            "mac": "52:54:00:ef:d7:b3",
+            "addresses": [
+              "192.168.122.1/24"
+            ]
+          },
+          {
+            "name": "virbr0-nic",
+            "mac": "52:54:00:ef:d7:b3",
+            "addresses": null
+          },
+          {
+            "name": "docker0",
+            "mac": "02:42:95:c8:c9:e9",
+            "addresses": [
+              "172.17.0.1/16",
+              "fe80::42:95ff:fec8:c9e9/64"
+            ]
+          }
+        ]
+      },
+      "arch": "amd64",
+      "libc_type": "glibc",
+      "vm_system": "kvm",
+      "vm_role": "host",
+      "cloud_provider": "",
+      "processes": null
+    },
+    "subscriptions": [
+      "test",
+      "hmm",
+      "system/linux",
+      "system/fedora",
+      "entity:custom_agent"
+    ],
+    "last_seen": 1625249187,
+    "deregister": false,
+    "deregistration": {
+      "handler": "deregister"
+    },
+    "user": "agent",
+    "redact": [
+      "password",
+      "passwd",
+      "pass",
+      "api_key",
+      "api_token",
+      "access_key",
+      "secret_key",
+      "private_key",
+      "secret"
+    ],
+    "metadata": {
+      "name": "custom_agent",
+      "namespace": "default",
+      "labels": {
+        "what": "now"
+      },
+      "annotations": {
+        "header_value": "this is a header",
+        "password": "REDACTED",
+        "sensu_cluster_metrics_url": "https://localhost:8080/graphql --skip-insecure-verify",
+        "check_http_url": "http://www.sensu.io",
+        "latte_flavor": "pumpkin_spice"
+      }
+    },
+    "sensu_agent_version": "6.3.0"
+  },
+  "check": {
+    "handlers": [
+      "keepalive"
+    ],
+    "high_flap_threshold": 0,
+    "interval": 20,
+    "low_flap_threshold": 0,
+    "publish": false,
+    "runtime_assets": null,
+    "subscriptions": [],
+    "proxy_entity_name": "",
+    "check_hooks": null,
+    "stdin": false,
+    "subdue": null,
+    "ttl": 60,
+    "timeout": 30,
+    "round_robin": false,
+    "executed": 1626822286,
+    "history": [
+      {
+        "status": 2,
+        "executed": 1626821685
+      },
+      {
+        "status": 2,
+        "executed": 1626821715
+      },
+      {
+        "status": 2,
+        "executed": 1626821745
+      },
+      {
+        "status": 2,
+        "executed": 1626821775
+      },
+      {
+        "status": 2,
+        "executed": 1626821805
+      },
+      {
+        "status": 2,
+        "executed": 1626821835
+      },
+      {
+        "status": 2,
+        "executed": 1626821865
+      },
+      {
+        "status": 2,
+        "executed": 1626821895
+      },
+      {
+        "status": 2,
+        "executed": 1626821925
+      },
+      {
+        "status": 2,
+        "executed": 1626821955
+      },
+      {
+        "status": 2,
+        "executed": 1626821985
+      },
+      {
+        "status": 2,
+        "executed": 1626822015
+      },
+      {
+        "status": 2,
+        "executed": 1626822045
+      },
+      {
+        "status": 2,
+        "executed": 1626822075
+      },
+      {
+        "status": 2,
+        "executed": 1626822105
+      },
+      {
+        "status": 2,
+        "executed": 1626822136
+      },
+      {
+        "status": 2,
+        "executed": 1626822166
+      },
+      {
+        "status": 2,
+        "executed": 1626822196
+      },
+      {
+        "status": 2,
+        "executed": 1626822226
+      },
+      {
+        "status": 2,
+        "executed": 1626822256
+      },
+      {
+        "status": 2,
+        "executed": 1626822286
+      }
+    ],
+    "issued": 1626822286,
+    "output": "No keepalive sent from custom_agent for 1573099 seconds (>= 60)",
+    "state": "failing",
+    "status": 2,
+    "total_state_change": 0,
+    "last_ok": 1625249187,
+    "occurrences": 20172,
+    "occurrences_watermark": 20172,
+    "output_metric_format": "",
+    "output_metric_handlers": null,
+    "env_vars": null,
+    "metadata": {
+      "name": "keepalive",
+      "namespace": "default"
+    },
+    "secrets": null,
+    "is_silenced": false,
+    "scheduler": "etcd"
+  },
+  "metadata": {
+    "namespace": "default"
+  },
+  "id": "cc1fd69d-4000-4687-8d0d-8d0d24569880",
+  "sequence": 16,
+  "timestamp": 1626822286
+}
+

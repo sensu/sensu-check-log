@@ -15,7 +15,6 @@ coverage.out
 ca-config.json
 
 # packaging
-*.log
 .vagrant/
 *.deb
 *.rpm
