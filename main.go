@@ -354,149 +354,150 @@ func buildLogArray() error {
 	return e
 }
 
+func processLogFile(file string, enc *json.Encoder) (int, error) {
+	if !filepath.IsAbs(file) {
+		return sensu.CheckStateCritical, fmt.Errorf("error file %s: is not absolute path", file)
+	}
+	if plugin.Verbose {
+		log.Printf("Processing: %v", file)
+	}
+	f, err := os.Open(file)
+	if err != nil {
+		return sensu.CheckStateCritical, fmt.Errorf("error couldn't open log file %s: %s", file, err)
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("error couldn't close log file %s: %s", file, err)
+		}
+	}()
+
+	stateFile := filepath.Join(plugin.StateDir, strings.ReplaceAll(file, string(os.PathSeparator), string("_")))
+	if plugin.Verbose {
+		log.Println("stateFile", stateFile)
+	}
+	state, err := getState(stateFile)
+	if err != nil {
+		return sensu.CheckStateCritical, fmt.Errorf("error couldn't get state for log file %s: %s", file, err)
+
+	}
+	// Do we need to reset the state because the requested MatchExpr or InverseMatch is different?
+	resetState := false
+	if state.MatchExpr != "" && state.MatchExpr != plugin.MatchExpr {
+		resetState = true
+	}
+	if state.InverseMatch != plugin.InverseMatch {
+		resetState = true
+	}
+	if resetState {
+		if plugin.EnableStateReset {
+			state = State{}
+			if plugin.Verbose {
+				log.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use", file)
+			}
+		} else {
+			return sensu.CheckStateCritical, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v\nEither use --reset-state option, or manually delete state file %s", file, state.MatchExpr, state.InverseMatch, stateFile)
+		}
+	}
+	info, err := f.Stat()
+	if err != nil {
+		return sensu.CheckStateCritical, fmt.Errorf("error couldn't get info for file %s: %s", file, err)
+	}
+	// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
+	if state == (State{}) && plugin.IgnoreInitialRun {
+		state.Offset = int64(info.Size())
+		state.MatchExpr = plugin.MatchExpr
+		if err := setState(state, stateFile); err != nil {
+			return sensu.CheckStateCritical, fmt.Errorf("error couldn't set state for log file %s: %s", file, err)
+		}
+		return sensu.CheckStateOK, nil
+	}
+
+	offset := state.Offset
+	if info.ModTime().Unix() > state.LastTime {
+		if plugin.Verbose {
+			log.Printf("Info: File %s modifed since last read", file)
+		}
+	}
+	// Are we looking at freshly rotated file since last time we run?
+	// Modification time newer than last read and last read offset at or beyond end of file?
+	// If so let's reset the offset back to 0 and read the file again
+	if offset >= info.Size() && info.ModTime().Unix() > state.LastTime {
+		offset = 0
+		if plugin.Verbose {
+			log.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
+		}
+	}
+	state.LastTime = time.Now().Unix()
+	if offset > 0 {
+		if _, err := f.Seek(offset, io.SeekStart); err != nil {
+			return sensu.CheckStateCritical, fmt.Errorf("error couldn't seek file %s to offset %d: %s", file, offset, err)
+
+		}
+	}
+	var reader io.Reader = f
+	if plugin.MaxBytes > 0 {
+		reader = io.LimitReader(f, plugin.MaxBytes)
+	}
+
+	analyzer := Analyzer{
+		Path:  file,
+		Procs: plugin.Procs,
+		Log:   reader,
+		Func:  AnalyzeRegexp(plugin.MatchExpr),
+	}
+
+	status := sensu.CheckStateOK
+	results := analyzer.Go(context.Background())
+
+	for result := range results {
+		if result.Err != nil {
+			status = sensu.CheckStateCritical
+		}
+		if err := enc.Encode(result); err != nil {
+			return sensu.CheckStateCritical, fmt.Errorf("error couldn't encode result %+v for file %s: %s", result, result.Path, err)
+		}
+		status = plugin.MatchStatus
+	}
+	if plugin.Verbose {
+		log.Printf("File %s Match Status %v", file, status)
+	}
+	bytesRead := analyzer.BytesRead()
+	state.Offset = int64(offset + bytesRead)
+	state.MatchExpr = plugin.MatchExpr
+
+	if err := setState(state, stateFile); err != nil {
+		return sensu.CheckStateCritical, fmt.Errorf("Error setting state: %s", err)
+	}
+	return status, nil
+}
+
 func executeCheck(event *corev2.Event) (int, error) {
+	var status int
 	e := buildLogArray()
 	if e != nil {
 		return sensu.CheckStateCritical, e
 	}
-	fileErrors := []string{}
+	fileErrors := []error{}
 
 	eventBuf := new(bytes.Buffer)
 	enc := json.NewEncoder(eventBuf)
 
-	status := sensu.CheckStateOK
+	status = sensu.CheckStateOK
 
 	for _, file := range logs {
-		if !filepath.IsAbs(file) {
-			fileErrors = append(fileErrors, file)
-			log.Printf("error file %s: is not absolute path", file)
-			continue
-		}
-		if plugin.Verbose {
-			log.Printf("Processing: %v", file)
-		}
-		f, err := os.Open(file)
+		fileStatus, err := processLogFile(file, enc)
 		if err != nil {
-			fileErrors = append(fileErrors, file)
-			log.Printf("error couldn't open log file %s: %s", file, err)
-			continue
-		}
-		defer func() {
-			if err := f.Close(); err != nil {
-				fileErrors = append(fileErrors, file)
-				log.Printf("error couldn't close log file %s: %s", file, err)
-			}
-		}()
-
-		stateFile := filepath.Join(plugin.StateDir, strings.ReplaceAll(file, string(os.PathSeparator), string("_")))
-		if plugin.Verbose {
-			log.Println("stateFile", stateFile)
-		}
-		state, err := getState(stateFile)
-		if err != nil {
-			fileErrors = append(fileErrors, file)
-			log.Printf("error couldn't get state for log file %s: %s", file, err)
-			continue
-		}
-		// Do we need to reset the state because the requested MatchExpr or InverseMatch is different?
-		resetState := false
-		if state.MatchExpr != "" && state.MatchExpr != plugin.MatchExpr {
-			resetState = true
-		}
-		if state.InverseMatch != plugin.InverseMatch {
-			resetState = true
-		}
-		if resetState {
-			if plugin.EnableStateReset {
-				state = State{}
-				if plugin.Verbose {
-					log.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use", file)
-				}
-			} else {
-				fileErrors = append(fileErrors, file)
-				log.Printf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v\nEither use --reset-state option, or manually delete state file %s", file, state.MatchExpr, state.InverseMatch, stateFile)
-				continue
-			}
-		}
-		info, err := f.Stat()
-		if err != nil {
-			fileErrors = append(fileErrors, file)
-			log.Printf("error couldn't get info for file %s: %s", file, err)
-			continue
-		}
-		// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
-		if state == (State{}) && plugin.IgnoreInitialRun {
-			state.Offset = int64(info.Size())
-			state.MatchExpr = plugin.MatchExpr
-			if err := setState(state, stateFile); err != nil {
-				fileErrors = append(fileErrors, file)
-				log.Printf("error couldn't set state for log file %s: %s", file, err)
-				continue
-			}
-			continue
-		}
-
-		offset := state.Offset
-		if info.ModTime().Unix() > state.LastTime {
-			if plugin.Verbose {
-				log.Printf("Info: File %s modifed since last read", file)
-			}
-		}
-		// Are we looking at freshly rotated file since last time we run?
-		// Modification time newer than last read and last read offset at or beyond end of file?
-		// If so let's reset the offset back to 0 and read the file again
-		if offset >= info.Size() && info.ModTime().Unix() > state.LastTime {
-			offset = 0
-			if plugin.Verbose {
-				log.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
-			}
-		}
-		state.LastTime = time.Now().Unix()
-		if offset > 0 {
-			if _, err := f.Seek(offset, io.SeekStart); err != nil {
-				fileErrors = append(fileErrors, file)
-				log.Printf("error couldn't seek file %s to offset %d: %s", file, offset, err)
-				continue
-			}
-		}
-		var reader io.Reader = f
-		if plugin.MaxBytes > 0 {
-			reader = io.LimitReader(f, plugin.MaxBytes)
-		}
-
-		analyzer := Analyzer{
-			Path:  file,
-			Procs: plugin.Procs,
-			Log:   reader,
-			Func:  AnalyzeRegexp(plugin.MatchExpr),
-		}
-
-		results := analyzer.Go(context.Background())
-
-		for result := range results {
-			if result.Err != nil {
-				status = sensu.CheckStateCritical
-			}
-			if err := enc.Encode(result); err != nil {
-				fileErrors = append(fileErrors, file)
-				log.Printf("error couldn't encode result %+v for file %s: %s", result, result.Path, err)
-				continue
-			}
-			status = plugin.MatchStatus
-		}
-		if plugin.Verbose {
-			log.Printf("File %s Match Status %v", file, status)
-		}
-		bytesRead := analyzer.BytesRead()
-		state.Offset = int64(offset + bytesRead)
-		state.MatchExpr = plugin.MatchExpr
-
-		if err := setState(state, stateFile); err != nil {
-			log.Printf("Error setting state: %s", err)
-			fileErrors = append(fileErrors, file)
+			fileErrors = append(fileErrors, err)
+			status = fileStatus
 			continue
 		}
 	} // end of loop over log files
+	if len(fileErrors) > 0 {
+		for _, e := range fileErrors {
+			log.Printf("%v", e)
+		}
+		return status, nil
+	}
 
 	// sendEvent or report to stdout
 	if status != sensu.CheckStateOK {
@@ -526,10 +527,6 @@ func executeCheck(event *corev2.Event) (int, error) {
 				return sensu.CheckStateWarning, nil
 			}
 		}
-	}
-
-	if len(fileErrors) > 0 {
-		return sensu.CheckStateWarning, nil
 	}
 
 	return sensu.CheckStateOK, nil
