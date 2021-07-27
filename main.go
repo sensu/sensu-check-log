@@ -456,7 +456,9 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		if err := enc.Encode(result); err != nil {
 			return sensu.CheckStateCritical, fmt.Errorf("error couldn't encode result %+v for file %s: %s", result, result.Path, err)
 		}
-		status = plugin.MatchStatus
+		if status < plugin.MatchStatus {
+			status = plugin.MatchStatus
+		}
 	}
 	if plugin.Verbose {
 		log.Printf("File %s Match Status %v", file, status)
