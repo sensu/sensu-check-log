@@ -177,24 +177,6 @@ func TestProcessLogFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 40, status)
 
-	// test for read log file error
-	err = os.Chmod("./testingdata/test.log", 0000)
-	assert.NoError(t, err)
-	status, err = processLogFile(logs[0], enc)
-	assert.Error(t, err)
-	assert.Equal(t, 2, status)
-	err = os.Chmod("./testingdata/test.log", 0755)
-	assert.NoError(t, err)
-
-	// test for state file read error
-	err = os.Chmod(td, 0000)
-	assert.NoError(t, err)
-	status, err = processLogFile(logs[0], enc)
-	assert.Error(t, err)
-	assert.Equal(t, 2, status)
-	err = os.Chmod(td, 0755)
-	assert.NoError(t, err)
-
 	// test for state mismatch error
 	plugin.MatchExpr = "hmm"
 	status, err = processLogFile(logs[0], enc)
@@ -214,8 +196,27 @@ func TestProcessLogFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 40, status)
 
-	// test for state file write error
+	// Do not run error condition tests that require chmod on windows, they will fail
 	if runtime.GOOS != "windows" {
+		// test for read log file error
+		err = os.Chmod("./testingdata/test.log", 0000)
+		assert.NoError(t, err)
+		status, err = processLogFile(logs[0], enc)
+		assert.Error(t, err)
+		assert.Equal(t, 2, status)
+		err = os.Chmod("./testingdata/test.log", 0755)
+		assert.NoError(t, err)
+
+		// test for state file read error
+		err = os.Chmod(td, 0000)
+		assert.NoError(t, err)
+		status, err = processLogFile(logs[0], enc)
+		assert.Error(t, err)
+		assert.Equal(t, 2, status)
+		err = os.Chmod(td, 0755)
+		assert.NoError(t, err)
+
+		// test for state file write error
 		td, err = ioutil.TempDir("", "")
 		defer os.Remove(td)
 		assert.NoError(t, err)
