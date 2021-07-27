@@ -14,12 +14,10 @@ import (
 
 func TestState(t *testing.T) {
 	td, err := ioutil.TempDir("", "")
+	defer os.Remove(td)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() {
-		_ = os.RemoveAll(td)
-	}()
 	stateFile := filepath.Join(td, "state")
 	state, err := getState(stateFile)
 	if err != nil {
@@ -61,7 +59,9 @@ func TestBuildLogArray(t *testing.T) {
 	}
 
 }
-func TestExecuteCheck(t *testing.T) {
+
+func TestExecuteCheckWithDisableEvent(t *testing.T) {
+	status := -1
 	plugin.Verbose = false
 	plugin.Procs = 1
 	plugin.DisableEvent = true
@@ -69,11 +69,28 @@ func TestExecuteCheck(t *testing.T) {
 	plugin.MatchExpr = "test"
 	plugin.MatchStatus = 40
 	td, err := ioutil.TempDir("", "")
+	defer os.Remove(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
-	status, err := executeCheck(nil)
+	status, err = executeCheck(nil)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, status)
+	assert.Equal(t, 40, status)
+}
+func TestExecuteCheckWithNoEvent(t *testing.T) {
+	status := -1
+	plugin.Verbose = false
+	plugin.Procs = 1
+	plugin.DisableEvent = false
+	plugin.LogFile = "./testingdata/test.log"
+	plugin.MatchExpr = "test"
+	plugin.MatchStatus = 40
+	td, err := ioutil.TempDir("", "")
+	defer os.Remove(td)
+	assert.NoError(t, err)
+	plugin.StateDir = td
+	status, err = executeCheck(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, status)
 }
 
 func TestProcessLogFile(t *testing.T) {
@@ -86,6 +103,7 @@ func TestProcessLogFile(t *testing.T) {
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.MatchExpr = "test"
 	td, err := ioutil.TempDir("", "")
+	defer os.Remove(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
 	err = os.Chmod("./testingdata/test.log", 0755)
@@ -99,6 +117,19 @@ func TestProcessLogFile(t *testing.T) {
 	// test for good match
 	logs = []string{}
 	td, err = ioutil.TempDir("", "")
+	defer os.Remove(td)
+	assert.NoError(t, err)
+	plugin.StateDir = td
+	err = os.Chmod("./testingdata/test.log", 0755)
+	assert.NoError(t, err)
+	status, err = checkArgs(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, status)
+
+	// test for good match
+	logs = []string{}
+	td, err = ioutil.TempDir("", "")
+	defer os.Remove(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
 	plugin.MatchExpr = "test"
@@ -111,11 +142,35 @@ func TestProcessLogFile(t *testing.T) {
 	// test for abs log file path err
 	logs = []string{}
 	td, err = ioutil.TempDir("", "")
+	defer os.Remove(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
 	status, err = processLogFile(plugin.LogFile, enc)
 	assert.Error(t, err)
 	assert.Equal(t, 2, status)
+	err = buildLogArray()
+	assert.NoError(t, err)
+	status, err = processLogFile(logs[0], enc)
+	assert.NoError(t, err)
+	assert.Equal(t, 40, status)
+
+	// test for IgnoreFirstRun
+	plugin.IgnoreInitialRun = true
+	logs = []string{}
+	td, err = ioutil.TempDir("", "")
+	defer os.Remove(td)
+	assert.NoError(t, err)
+	plugin.StateDir = td
+	err = buildLogArray()
+	assert.NoError(t, err)
+	status, err = processLogFile(logs[0], enc)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, status)
+	plugin.IgnoreInitialRun = false
+	td, err = ioutil.TempDir("", "")
+	defer os.Remove(td)
+	assert.NoError(t, err)
+	plugin.StateDir = td
 	err = buildLogArray()
 	assert.NoError(t, err)
 	status, err = processLogFile(logs[0], enc)
@@ -162,6 +217,7 @@ func TestProcessLogFile(t *testing.T) {
 	// test for state file write error
 	if runtime.GOOS != "windows" {
 		td, err = ioutil.TempDir("", "")
+		defer os.Remove(td)
 		assert.NoError(t, err)
 		plugin.StateDir = td
 		err = os.Chmod(td, 0500)

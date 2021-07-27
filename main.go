@@ -494,6 +494,9 @@ func executeCheck(event *corev2.Event) (int, error) {
 			status = fileStatus
 			continue
 		}
+		if status < fileStatus {
+			status = fileStatus
+		}
 	} // end of loop over log files
 	if len(fileErrors) > 0 {
 		for _, e := range fileErrors {
