@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -110,17 +111,17 @@ func TestProcessLogFile(t *testing.T) {
 	status, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
 	assert.Equal(t, status, 0)
-
-	// test for state file write error
-	td, err = ioutil.TempDir("", "")
-	assert.NoError(t, err)
-	plugin.StateDir = td
-	err = os.Chmod(td, 0500)
-	assert.NoError(t, err)
-	status, err = processLogFile(logs[0], enc)
-	assert.Error(t, err)
-	assert.Equal(t, status, 2)
-	err = os.Chmod(td, 0755)
-	assert.NoError(t, err)
-
+	if runtime.GOOS != "windows" {
+		// test for state file write error
+		td, err = ioutil.TempDir("", "")
+		assert.NoError(t, err)
+		plugin.StateDir = td
+		err = os.Chmod(td, 0500)
+		assert.NoError(t, err)
+		status, err = processLogFile(logs[0], enc)
+		assert.Error(t, err)
+		assert.Equal(t, status, 2)
+		err = os.Chmod(td, 0755)
+		assert.NoError(t, err)
+	}
 }
