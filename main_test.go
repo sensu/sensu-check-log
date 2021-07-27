@@ -113,6 +113,7 @@ func TestProcessLogFile(t *testing.T) {
 
 	// test for state file write error
 	td, err = ioutil.TempDir("", "")
+	assert.NoError(t, err)
 	plugin.StateDir = td
 	err = os.Chmod(td, 0500)
 	assert.NoError(t, err)
