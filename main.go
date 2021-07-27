@@ -14,7 +14,6 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"time"
 
 	corev2 "github.com/sensu/sensu-go/api/core/v2"
 	"github.com/sensu/sensu-plugin-sdk/sensu"
@@ -202,8 +201,6 @@ var (
 // State represents the state file offset
 type State struct {
 	Offset       int64
-	LastTime     int64
-	ModTime      int64
 	MatchExpr    string
 	InverseMatch bool
 }
@@ -414,27 +411,23 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	}
 
 	offset := state.Offset
-	if info.ModTime().Unix() > state.LastTime {
-		if plugin.Verbose {
-			log.Printf("Info: File %s modifed since last read", file)
-		}
-	}
 	// Are we looking at freshly rotated file since last time we run?
 	// Modification time newer than last read and last read offset at or beyond end of file?
 	// If so let's reset the offset back to 0 and read the file again
-	if offset >= info.Size() && info.ModTime().Unix() > state.LastTime {
+	if offset >= info.Size() {
 		offset = 0
 		if plugin.Verbose {
 			log.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
 		}
 	}
-	state.LastTime = time.Now().Unix()
+
 	if offset > 0 {
 		if _, err := f.Seek(offset, io.SeekStart); err != nil {
 			return sensu.CheckStateCritical, fmt.Errorf("error couldn't seek file %s to offset %d: %s", file, offset, err)
 
 		}
 	}
+
 	var reader io.Reader = f
 	if plugin.MaxBytes > 0 {
 		reader = io.LimitReader(f, plugin.MaxBytes)
@@ -467,6 +460,9 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	bytesRead := analyzer.BytesRead()
 	state.Offset = int64(offset + bytesRead)
 	state.MatchExpr = plugin.MatchExpr
+	if plugin.Verbose {
+		log.Printf("File %s Match Status %v BytesRead: %v New Offset: %v", file, status, bytesRead, state.Offset)
+	}
 
 	if err := setState(state, stateFile); err != nil {
 		return sensu.CheckStateCritical, fmt.Errorf("Error setting state: %s", err)
@@ -516,6 +512,10 @@ func executeCheck(event *corev2.Event) (int, error) {
 		// proceed with event generation
 		if event == nil {
 			log.Printf("Error: Input event not defined. Event generation aborted")
+			return sensu.CheckStateWarning, nil
+		}
+		if len(plugin.EventsAPI) == 0 {
+			log.Printf("Error: Event API url not defined. Event generation aborted")
 			return sensu.CheckStateWarning, nil
 		}
 		outputEvent, err := createEvent(event, status, plugin.CheckNameTemplate, eventBuf.String())
