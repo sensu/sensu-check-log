@@ -365,6 +365,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	if err != nil {
 		return sensu.CheckStateCritical, fmt.Errorf("error couldn't open log file %s: %s", file, err)
 	}
+
 	defer func() {
 		if err := f.Close(); err != nil {
 			log.Printf("error couldn't close log file %s: %s", file, err)
@@ -385,7 +386,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	if state.MatchExpr != "" && state.MatchExpr != plugin.MatchExpr {
 		resetState = true
 	}
-	if state.InverseMatch != plugin.InverseMatch {
+	if state.MatchExpr != "" && state.InverseMatch != plugin.InverseMatch {
 		resetState = true
 	}
 	if resetState {

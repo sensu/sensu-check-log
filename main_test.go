@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -63,6 +64,8 @@ func TestBuildLogArray(t *testing.T) {
 }
 
 func TestProcessLogFile(t *testing.T) {
+	status := -1
+	plugin.Verbose = true
 	logs = []string{}
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.MatchExpr = "test"
@@ -74,8 +77,24 @@ func TestProcessLogFile(t *testing.T) {
 	eventBuf := new(bytes.Buffer)
 	enc := json.NewEncoder(eventBuf)
 
+	// test for good match
+	log.Println("Should return a match")
+	logs = []string{}
+	td, err = ioutil.TempDir("", "")
+	assert.NoError(t, err)
+	plugin.StateDir = td
+	err = buildLogArray()
+	assert.NoError(t, err)
+	status, err = processLogFile(logs[0], enc)
+	assert.NoError(t, err)
+	assert.Equal(t, status, 0)
+
 	// test for abs log file path err
-	status, err := processLogFile(plugin.LogFile, enc)
+	logs = []string{}
+	td, err = ioutil.TempDir("", "")
+	assert.NoError(t, err)
+	plugin.StateDir = td
+	status, err = processLogFile(plugin.LogFile, enc)
 	assert.Error(t, err)
 	assert.Equal(t, status, 2)
 	err = buildLogArray()
@@ -111,8 +130,18 @@ func TestProcessLogFile(t *testing.T) {
 	status, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
 	assert.Equal(t, status, 0)
+	plugin.InverseMatch = true
+	plugin.EnableStateReset = false
+	status, err = processLogFile(logs[0], enc)
+	assert.Error(t, err)
+	assert.Equal(t, status, 2)
+	plugin.EnableStateReset = true
+	status, err = processLogFile(logs[0], enc)
+	assert.NoError(t, err)
+	assert.Equal(t, status, 0)
+
+	// test for state file write error
 	if runtime.GOOS != "windows" {
-		// test for state file write error
 		td, err = ioutil.TempDir("", "")
 		assert.NoError(t, err)
 		plugin.StateDir = td
