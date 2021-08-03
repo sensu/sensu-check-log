@@ -273,17 +273,24 @@ func checkArgs(event *corev2.Event) (int, error) {
 	return sensu.CheckStateOK, nil
 }
 
-func main() {
+func testStdin() (bool, error) {
 	fi, err := os.Stdin.Stat()
 	if err != nil {
 		fmt.Printf("Error accessing stdin: %v\n", err)
-		panic(err)
+		return false, err
 	}
 	//Check the Mode bitmask for Named Pipe to indicate stdin is connected
 	if fi.Mode()&os.ModeNamedPipe != 0 {
-		useStdin = true
+		return true, nil
 	}
+	return false, nil
+}
 
+func main() {
+	useStdin, err := testStdin()
+	if err != nil {
+		panic(err)
+	}
 	check := sensu.NewGoCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
 	check.Execute()
 }

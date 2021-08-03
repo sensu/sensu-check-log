@@ -41,6 +41,14 @@ func clearPlugin() {
 	plugin.IgnoreInitialRun = false
 	plugin.InverseMatch = false
 }
+
+func TestStdin(t *testing.T) {
+	clearPlugin()
+	test, err := testStdin()
+	assert.NoError(t, err)
+	assert.Equal(t, false, test)
+}
+
 func TestCheckArgs(t *testing.T) {
 	clearPlugin()
 	status, err := checkArgs(nil)
