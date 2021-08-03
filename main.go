@@ -41,7 +41,6 @@ type Config struct {
 }
 
 var (
-	useStdin            = false
 	defaultNameTemplate = "{{ .Check.Name }}-alert"
 	logs                = []string{}
 	plugin              = Config{
