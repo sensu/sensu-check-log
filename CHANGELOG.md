@@ -12,11 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Now uses state directory
 
 ### Added
-* New support regex log file matching
+* New support for optional regex log file matching
 
 * Support for alert on inverse of matching regex
 
-* Rerun 
+* new support for error reporting if requested log file(s) are missing
 
 ## [0.2.0] - 2020-08-21
 
