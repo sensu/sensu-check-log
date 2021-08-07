@@ -50,8 +50,11 @@ func TestSendEvent(t *testing.T) {
 	event := sensu.FixtureEvent("foo", "bar")
 	server := httptest.NewServer(testHandler{t: t, event: event})
 	defer server.Close()
-
-	if err := sendEvent(server.URL+"/events", event, 1, "output"); err != nil {
+	outputEvent, err := createEvent(event, 1, "{{ .Check.Name }}-failure", "output")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sendEvent(server.URL+"/events", outputEvent); err != nil {
 		t.Fatal(err)
 	}
 }

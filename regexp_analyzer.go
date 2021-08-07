@@ -1,6 +1,8 @@
 package main
 
-import "regexp"
+import (
+	"regexp"
+)
 
 func AnalyzeRegexp(pattern string) AnalyzerFunc {
 	re, err := regexp.Compile(pattern)
@@ -8,8 +10,12 @@ func AnalyzeRegexp(pattern string) AnalyzerFunc {
 		fatal("invalid regexp: %s", err)
 	}
 	return func(b []byte) *Result {
-		if re.Match(b) {
-			return &Result{Match: string(b)}
+		inverse := plugin.InverseMatch
+		if inverse && !re.Match(b) {
+			return &Result{Match: string(b), Inverse: inverse}
+		}
+		if !inverse && re.Match(b) {
+			return &Result{Match: string(b), Inverse: inverse}
 		}
 		return nil
 	}

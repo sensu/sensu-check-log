@@ -3,30 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"time"
 
-	sensu "github.com/sensu/sensu-go/api/core/v2"
+	corev2 "github.com/sensu/sensu-go/api/core/v2"
 )
 
-func sendEvent(path string, inputEvent *sensu.Event, status int, results string) error {
-	if status < 0 {
-		return errors.New("negative status")
-	}
-	outputEvent := sensu.Event{Entity: inputEvent.Entity}
-	outputEvent.Namespace = inputEvent.Namespace
-	check := inputEvent.Check
-	outputEvent.Check = check
-	check.Executed = time.Now().Unix()
-	check.Issued = inputEvent.Check.Issued
-	check.Command = inputEvent.Check.Command
-	check.Name = fmt.Sprintf("%s-failure", check.Name)
-	check.Output = results
-	check.Status = uint32(status)
+func sendEvent(path string, outputEvent *corev2.Event) error {
 
 	b, err := json.Marshal(outputEvent)
 	if err != nil {

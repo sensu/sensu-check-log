@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+#### Refactored to use sensu plugin sdk, notable breaking changes:
+* cmdline arguments now support double dash  and short options
+* Now uses state directory
+
+### Added
+* New support for optional regex log file matching
+
+* Support for alert on inverse of matching regex
+
+* new support for error reporting if requested log file(s) are missing
+
 ## [0.2.0] - 2020-08-21
 
 ### Added
