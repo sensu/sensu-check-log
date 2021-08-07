@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -241,7 +240,7 @@ func setState(cur State, path string) (err error) {
 }
 
 func fatal(formatter string, args ...interface{}) {
-	log.Printf(formatter, args...)
+	fmt.Printf(formatter, args...)
 	os.Exit(2)
 }
 
@@ -267,7 +266,7 @@ func checkArgs(event *corev2.Event) (int, error) {
 	}
 	if plugin.DryRun {
 		plugin.Verbose = true
-		log.Printf("LogFileExpr: %s StateDir: %s\n", plugin.LogFileExpr, plugin.StateDir)
+		fmt.Printf("LogFileExpr: %s StateDir: %s\n", plugin.LogFileExpr, plugin.StateDir)
 	}
 	return sensu.CheckStateOK, nil
 }
@@ -352,7 +351,7 @@ func buildLogArray() error {
 	}
 	logs = removeDuplicates(logs)
 	if plugin.Verbose {
-		log.Printf("Log file array to process: %v", logs)
+		fmt.Printf("Log file array to process: %v", logs)
 	}
 	return e
 }
@@ -362,7 +361,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		return sensu.CheckStateCritical, fmt.Errorf("error file %s: is not absolute path", file)
 	}
 	if plugin.Verbose {
-		log.Printf("Processing: %v", file)
+		fmt.Printf("Processing: %v", file)
 	}
 	f, err := os.Open(file)
 	if err != nil {
@@ -371,13 +370,13 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 
 	defer func() {
 		if err := f.Close(); err != nil {
-			log.Printf("error couldn't close log file %s: %s", file, err)
+			fmt.Printf("error couldn't close log file %s: %s", file, err)
 		}
 	}()
 
 	stateFile := filepath.Join(plugin.StateDir, strings.ReplaceAll(file, string(os.PathSeparator), string("_")))
 	if plugin.Verbose {
-		log.Println("stateFile", stateFile)
+		fmt.Println("stateFile", stateFile)
 	}
 	state, err := getState(stateFile)
 	if err != nil {
@@ -396,7 +395,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		if plugin.EnableStateReset {
 			state = State{}
 			if plugin.Verbose {
-				log.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use", file)
+				fmt.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use", file)
 			}
 		} else {
 			return sensu.CheckStateCritical, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v\nEither use --reset-state option, or manually delete state file %s", file, state.MatchExpr, state.InverseMatch, stateFile)
@@ -422,7 +421,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	if offset >= info.Size() {
 		offset = 0
 		if plugin.Verbose {
-			log.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
+			fmt.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
 		}
 	}
 
@@ -460,13 +459,13 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		}
 	}
 	if plugin.Verbose {
-		log.Printf("File %s Match Status %v", file, status)
+		fmt.Printf("File %s Match Status %v", file, status)
 	}
 	bytesRead := analyzer.BytesRead()
 	state.Offset = int64(offset + bytesRead)
 	state.MatchExpr = plugin.MatchExpr
 	if plugin.Verbose {
-		log.Printf("File %s Match Status %v BytesRead: %v New Offset: %v", file, status, bytesRead, state.Offset)
+		fmt.Printf("File %s Match Status %v BytesRead: %v New Offset: %v", file, status, bytesRead, state.Offset)
 	}
 
 	if err := setState(state, stateFile); err != nil {
@@ -501,7 +500,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 	} // end of loop over log files
 	if len(fileErrors) > 0 {
 		for _, e := range fileErrors {
-			log.Printf("%v", e)
+			fmt.Printf("%v", e)
 		}
 		return status, nil
 	}
@@ -516,25 +515,25 @@ func executeCheck(event *corev2.Event) (int, error) {
 
 		// proceed with event generation
 		if event == nil {
-			log.Printf("Error: Input event not defined. Event generation aborted")
+			fmt.Printf("Error: Input event not defined. Event generation aborted")
 			return sensu.CheckStateWarning, nil
 		}
 		if len(plugin.EventsAPI) == 0 {
-			log.Printf("Error: Event API url not defined. Event generation aborted")
+			fmt.Printf("Error: Event API url not defined. Event generation aborted")
 			return sensu.CheckStateWarning, nil
 		}
 		outputEvent, err := createEvent(event, status, plugin.CheckNameTemplate, eventBuf.String())
 		if err != nil {
-			log.Printf("Error creating event: %s", err)
+			fmt.Printf("Error creating event: %s", err)
 			return sensu.CheckStateWarning, nil
 		}
 
 		// if --dry-run selected lets report what we would have sent instead of sending.
 		if plugin.DryRun {
-			log.Printf("Dry-run enabled, event to send:\n%+v", outputEvent)
+			fmt.Printf("Dry-run enabled, event to send:\n%+v", outputEvent)
 		} else {
 			if err := sendEvent(plugin.EventsAPI, outputEvent); err != nil {
-				log.Printf("Error sending event: %s", err)
+				fmt.Printf("Error sending event: %s", err)
 				return sensu.CheckStateWarning, nil
 			}
 		}
