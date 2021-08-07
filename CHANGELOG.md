@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2021-08-06
+
 ### Breaking Changes
 #### Refactored to use sensu plugin sdk, notable breaking changes:
 * cmdline arguments now support double dash  and short options
