@@ -349,7 +349,7 @@ func buildLogArray() error {
 					if filepath.IsAbs(path) {
 						logs = append(logs, path)
 					} else {
-						return fmt.Errorf("Path %s not absolute\n", path)
+						return fmt.Errorf("Path %s not absolute", path)
 					}
 				}
 				return nil
@@ -368,7 +368,7 @@ func buildLogArray() error {
 
 func processLogFile(file string, enc *json.Encoder) (int, error) {
 	if !filepath.IsAbs(file) {
-		return sensu.CheckStateCritical, fmt.Errorf("error file %s: is not absolute path\n", file)
+		return sensu.CheckStateCritical, fmt.Errorf("error file %s: is not absolute path", file)
 	}
 	if plugin.Verbose {
 		fmt.Printf("Processing: %v", file)
@@ -378,7 +378,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		if plugin.MissingOK {
 			return sensu.CheckStateOK, nil
 		} else {
-			return sensu.CheckStateCritical, fmt.Errorf("error couldn't open log file %s: %s\n", file, err)
+			return sensu.CheckStateCritical, fmt.Errorf("error couldn't open log file %s: %s", file, err)
 
 		}
 	}
@@ -394,7 +394,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	}
 	state, err := getState(stateFile)
 	if err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("error couldn't get state for log file %s: %s\n", file, err)
+		return sensu.CheckStateCritical, fmt.Errorf("error couldn't get state for log file %s: %s", file, err)
 
 	}
 	// Do we need to reset the state because the requested MatchExpr or InverseMatch is different?
@@ -412,19 +412,19 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 				fmt.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use\n", file)
 			}
 		} else {
-			return sensu.CheckStateCritical, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v\nEither use --reset-state option, or manually delete state file %s\n", file, state.MatchExpr, state.InverseMatch, stateFile)
+			return sensu.CheckStateCritical, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v. Either use --reset-state option, or manually delete state file %s", file, state.MatchExpr, state.InverseMatch, stateFile)
 		}
 	}
 	info, err := f.Stat()
 	if err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("error couldn't get info for file %s: %s\n", file, err)
+		return sensu.CheckStateCritical, fmt.Errorf("error couldn't get info for file %s: %s", file, err)
 	}
 	// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
 	if state == (State{}) && plugin.IgnoreInitialRun {
 		state.Offset = int64(info.Size())
 		state.MatchExpr = plugin.MatchExpr
 		if err := setState(state, stateFile); err != nil {
-			return sensu.CheckStateCritical, fmt.Errorf("error couldn't set state for log file %s: %s\n", file, err)
+			return sensu.CheckStateCritical, fmt.Errorf("error couldn't set state for log file %s: %s", file, err)
 		}
 		return sensu.CheckStateOK, nil
 	}
@@ -441,7 +441,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 
 	if offset > 0 {
 		if _, err := f.Seek(offset, io.SeekStart); err != nil {
-			return sensu.CheckStateCritical, fmt.Errorf("error couldn't seek file %s to offset %d: %s\n", file, offset, err)
+			return sensu.CheckStateCritical, fmt.Errorf("error couldn't seek file %s to offset %d: %s", file, offset, err)
 
 		}
 	}
@@ -466,7 +466,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 			status = sensu.CheckStateCritical
 		}
 		if err := enc.Encode(result); err != nil {
-			return sensu.CheckStateCritical, fmt.Errorf("error couldn't encode result %+v for file %s: %s\n", result, result.Path, err)
+			return sensu.CheckStateCritical, fmt.Errorf("error couldn't encode result %+v for file %s: %s", result, result.Path, err)
 		}
 		if status < plugin.MatchStatus {
 			status = plugin.MatchStatus
@@ -483,7 +483,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	}
 
 	if err := setState(state, stateFile); err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("Error setting state: %s\n", err)
+		return sensu.CheckStateCritical, fmt.Errorf("Error setting state: %s", err)
 	}
 	return status, nil
 }
