@@ -361,22 +361,11 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		return sensu.CheckStateCritical, fmt.Errorf("error file %s: is not absolute path", file)
 	}
 	if plugin.Verbose {
-		fmt.Printf("Processing: %v", file)
+		fmt.Printf("Now Processing: %v\n", file)
 	}
-	f, err := os.Open(file)
-	if err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("error couldn't open log file %s: %s", file, err)
-	}
-
-	defer func() {
-		if err := f.Close(); err != nil {
-			fmt.Printf("error couldn't close log file %s: %s", file, err)
-		}
-	}()
-
 	stateFile := filepath.Join(plugin.StateDir, strings.ReplaceAll(file, string(os.PathSeparator), string("_")))
 	if plugin.Verbose {
-		fmt.Println("stateFile", stateFile)
+		fmt.Printf("stateFile: %s\n", stateFile)
 	}
 	state, err := getState(stateFile)
 	if err != nil {
@@ -395,12 +384,23 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		if plugin.EnableStateReset {
 			state = State{}
 			if plugin.Verbose {
-				fmt.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use", file)
+				fmt.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use\n", file)
 			}
 		} else {
 			return sensu.CheckStateCritical, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v\nEither use --reset-state option, or manually delete state file %s", file, state.MatchExpr, state.InverseMatch, stateFile)
 		}
 	}
+	f, err := os.Open(file)
+	if err != nil {
+		return sensu.CheckStateCritical, fmt.Errorf("error couldn't open log file %s: %s", file, err)
+	}
+
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Printf("error couldn't close log file %s: %s\n", file, err)
+		}
+	}()
+
 	info, err := f.Stat()
 	if err != nil {
 		return sensu.CheckStateCritical, fmt.Errorf("error couldn't get info for file %s: %s", file, err)
@@ -459,13 +459,13 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		}
 	}
 	if plugin.Verbose {
-		fmt.Printf("File %s Match Status %v", file, status)
+		fmt.Printf("File %s Match Status %v\n", file, status)
 	}
 	bytesRead := analyzer.BytesRead()
 	state.Offset = int64(offset + bytesRead)
 	state.MatchExpr = plugin.MatchExpr
 	if plugin.Verbose {
-		fmt.Printf("File %s Match Status %v BytesRead: %v New Offset: %v", file, status, bytesRead, state.Offset)
+		fmt.Printf("File %s Match Status %v BytesRead: %v New Offset: %v\n", file, status, bytesRead, state.Offset)
 	}
 
 	if err := setState(state, stateFile); err != nil {
@@ -500,7 +500,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 	} // end of loop over log files
 	if len(fileErrors) > 0 {
 		for _, e := range fileErrors {
-			fmt.Printf("%v", e)
+			fmt.Printf("%v\n", e)
 		}
 		return status, nil
 	}
@@ -515,25 +515,25 @@ func executeCheck(event *corev2.Event) (int, error) {
 
 		// proceed with event generation
 		if event == nil {
-			fmt.Printf("Error: Input event not defined. Event generation aborted")
+			fmt.Printf("Error: Input event not defined. Event generation aborted\n")
 			return sensu.CheckStateWarning, nil
 		}
 		if len(plugin.EventsAPI) == 0 {
-			fmt.Printf("Error: Event API url not defined. Event generation aborted")
+			fmt.Printf("Error: Event API url not defined. Event generation aborted\n")
 			return sensu.CheckStateWarning, nil
 		}
 		outputEvent, err := createEvent(event, status, plugin.CheckNameTemplate, eventBuf.String())
 		if err != nil {
-			fmt.Printf("Error creating event: %s", err)
+			fmt.Printf("Error creating event: %s\n", err)
 			return sensu.CheckStateWarning, nil
 		}
 
 		// if --dry-run selected lets report what we would have sent instead of sending.
 		if plugin.DryRun {
-			fmt.Printf("Dry-run enabled, event to send:\n%+v", outputEvent)
+			fmt.Printf("Dry-run enabled, event to send:\n%+v\n", outputEvent)
 		} else {
 			if err := sendEvent(plugin.EventsAPI, outputEvent); err != nil {
-				fmt.Printf("Error sending event: %s", err)
+				fmt.Printf("Error sending event: %s\n", err)
 				return sensu.CheckStateWarning, nil
 			}
 		}
