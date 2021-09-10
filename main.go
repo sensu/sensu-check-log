@@ -337,7 +337,11 @@ func buildLogArray() error {
 			e = filepath.Walk(absLogPath, func(path string, info os.FileInfo, err error) error {
 				if err == nil && logRegExp.MatchString(info.Name()) {
 					if filepath.IsAbs(path) {
-						logs = append(logs, path)
+						if fileInfo, err := os.Stat(path); err == nil {
+							if !fileInfo.IsDir() {
+								logs = append(logs, path)
+							}
+						}
 					} else {
 						return fmt.Errorf("Path %s not absolute", path)
 					}
@@ -351,7 +355,7 @@ func buildLogArray() error {
 	}
 	logs = removeDuplicates(logs)
 	if plugin.Verbose {
-		fmt.Printf("Log file array to process: %v", logs)
+		fmt.Printf("Log file array to process: %v\n", logs)
 	}
 	return e
 }
@@ -421,7 +425,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	if offset >= info.Size() {
 		offset = 0
 		if plugin.Verbose {
-			fmt.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
+			fmt.Println("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
 		}
 	}
 
@@ -459,13 +463,13 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		}
 	}
 	if plugin.Verbose {
-		fmt.Printf("File %s Match Status %v", file, status)
+		fmt.Printf("File %s Match Status %v\n", file, status)
 	}
 	bytesRead := analyzer.BytesRead()
 	state.Offset = int64(offset + bytesRead)
 	state.MatchExpr = plugin.MatchExpr
 	if plugin.Verbose {
-		fmt.Printf("File %s Match Status %v BytesRead: %v New Offset: %v", file, status, bytesRead, state.Offset)
+		fmt.Printf("File %s Match Status %v BytesRead: %v New Offset: %v\n", file, status, bytesRead, state.Offset)
 	}
 
 	if err := setState(state, stateFile); err != nil {

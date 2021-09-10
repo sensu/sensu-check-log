@@ -80,6 +80,8 @@ func (a *Analyzer) startProducer(ctx context.Context) <-chan []byte {
 	discard := NewDiscardWriter()
 	teeReader := io.TeeReader(reader, discard)
 	scanner := bufio.NewScanner(teeReader)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	a.wg.Add(1)
@@ -98,7 +100,7 @@ func (a *Analyzer) startProducer(ctx context.Context) <-chan []byte {
 			}
 		}
 		if err := scanner.Err(); err != nil {
-			fatal("error while scanning log: %s", err)
+			fatal("error while scanning log: %s :: %s\n", a.Path, err)
 		}
 		close(result)
 	}()
