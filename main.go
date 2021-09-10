@@ -267,12 +267,14 @@ func checkArgs(event *corev2.Event) (int, error) {
 	if plugin.StateDir == "" {
 		return sensu.CheckStateCritical, fmt.Errorf("--state-directory not specified")
 	}
-	_, err := os.Stat(plugin.StateDir)
-	if errors.Is(err, os.ErrNotExist) {
-		return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist", plugin.StateDir)
+	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(plugin.StateDir, os.ModePerm)
+		if err != nil {
+			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created.", plugin.StateDir)
+		}
 	}
-	if plugin.MatchExpr == "" {
-		return sensu.CheckStateCritical, fmt.Errorf("--match-expr not specified")
+	if _, err := os.Stat(plugin.StateDir); err != nil {
+		return sensu.CheckStateCritical, fmt.Errorf("Unexpected error accessing --state-directory %s: %s", plugin.StateDir, err)
 	}
 	if plugin.DryRun {
 		plugin.Verbose = true
@@ -347,7 +349,9 @@ func buildLogArray() error {
 			e = filepath.Walk(absLogPath, func(path string, info os.FileInfo, err error) error {
 				if err == nil && logRegExp.MatchString(info.Name()) {
 					if filepath.IsAbs(path) {
-						logs = append(logs, path)
+						if !info.IsDir() {
+							logs = append(logs, path)
+						}
 					} else {
 						return fmt.Errorf("Path %s not absolute", path)
 					}
@@ -473,7 +477,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		}
 	}
 	if plugin.Verbose {
-		fmt.Printf("File %s Match Status %v", file, status)
+		fmt.Printf("File %s Match Status %v\n", file, status)
 	}
 	bytesRead := analyzer.BytesRead()
 	state.Offset = int64(offset + bytesRead)
