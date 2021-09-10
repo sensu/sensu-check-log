@@ -411,7 +411,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		return 0, fmt.Errorf("error file %s: is not absolute path", file)
 	}
 	if plugin.Verbose {
-		fmt.Printf("Processing: %v", file)
+		fmt.Printf("Now Processing: %v\n", file)
 	}
 	f, err := os.Open(file)
 	if err != nil {
@@ -430,7 +430,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 
 	stateFile := filepath.Join(plugin.StateDir, strings.ReplaceAll(file, string(os.PathSeparator), string("_")))
 	if plugin.Verbose {
-		fmt.Println("stateFile", stateFile)
+		fmt.Printf("stateFile: %s\n", stateFile)
 	}
 	state, err := getState(stateFile)
 	if err != nil {
@@ -455,6 +455,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 			return 0, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v. Either use --reset-state option, or manually delete state file %s", file, state.MatchExpr, state.InverseMatch, stateFile)
 		}
 	}
+
 	info, err := f.Stat()
 	if err != nil {
 		return 0, fmt.Errorf("error couldn't get info for file %s: %s", file, err)
@@ -580,7 +581,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 	} // end of loop over log files
 	if len(fileErrors) > 0 {
 		for _, e := range fileErrors {
-			fmt.Printf("%v", e)
+			fmt.Printf("%v\n", e)
 		}
 		return sensu.CheckStateCritical, nil
 	}
