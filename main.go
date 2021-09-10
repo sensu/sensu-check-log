@@ -36,6 +36,7 @@ type Config struct {
 	DryRun            bool
 	Verbose           bool
 	EnableStateReset  bool
+	MissingOK         bool
 	CheckNameTemplate string
 }
 
@@ -140,6 +141,15 @@ var (
 			Default:   false,
 			Usage:     "Suppresses alerts for any matches found on the first run of the plugin.",
 			Value:     &plugin.IgnoreInitialRun,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "missing-ok",
+			Env:       "CHECK_LOG_MISING_OK",
+			Argument:  "missing-ok",
+			Shorthand: "M",
+			Default:   false,
+			Usage:     "Suppresses error if selected log files are missing",
+			Value:     &plugin.MissingOK,
 		},
 		&sensu.PluginConfigOption{
 			Path:      "check-name-tamplate",
@@ -339,7 +349,7 @@ func buildLogArray() error {
 					if filepath.IsAbs(path) {
 						logs = append(logs, path)
 					} else {
-						return fmt.Errorf("Path %s not absolute", path)
+						return fmt.Errorf("Path %s not absolute\n", path)
 					}
 				}
 				return nil
@@ -351,26 +361,30 @@ func buildLogArray() error {
 	}
 	logs = removeDuplicates(logs)
 	if plugin.Verbose {
-		fmt.Printf("Log file array to process: %v", logs)
+		fmt.Printf("Log file array to process: %v\n", logs)
 	}
 	return e
 }
 
 func processLogFile(file string, enc *json.Encoder) (int, error) {
 	if !filepath.IsAbs(file) {
-		return sensu.CheckStateCritical, fmt.Errorf("error file %s: is not absolute path", file)
+		return sensu.CheckStateCritical, fmt.Errorf("error file %s: is not absolute path\n", file)
 	}
 	if plugin.Verbose {
 		fmt.Printf("Processing: %v", file)
 	}
 	f, err := os.Open(file)
 	if err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("error couldn't open log file %s: %s", file, err)
-	}
+		if plugin.MissingOK {
+			return sensu.CheckStateOK, nil
+		} else {
+			return sensu.CheckStateCritical, fmt.Errorf("error couldn't open log file %s: %s\n", file, err)
 
+		}
+	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			fmt.Printf("error couldn't close log file %s: %s", file, err)
+			fmt.Printf("error couldn't close log file %s: %s\n", file, err)
 		}
 	}()
 
@@ -380,7 +394,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	}
 	state, err := getState(stateFile)
 	if err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("error couldn't get state for log file %s: %s", file, err)
+		return sensu.CheckStateCritical, fmt.Errorf("error couldn't get state for log file %s: %s\n", file, err)
 
 	}
 	// Do we need to reset the state because the requested MatchExpr or InverseMatch is different?
@@ -395,22 +409,22 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		if plugin.EnableStateReset {
 			state = State{}
 			if plugin.Verbose {
-				fmt.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use", file)
+				fmt.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use\n", file)
 			}
 		} else {
-			return sensu.CheckStateCritical, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v\nEither use --reset-state option, or manually delete state file %s", file, state.MatchExpr, state.InverseMatch, stateFile)
+			return sensu.CheckStateCritical, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v\nEither use --reset-state option, or manually delete state file %s\n", file, state.MatchExpr, state.InverseMatch, stateFile)
 		}
 	}
 	info, err := f.Stat()
 	if err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("error couldn't get info for file %s: %s", file, err)
+		return sensu.CheckStateCritical, fmt.Errorf("error couldn't get info for file %s: %s\n", file, err)
 	}
 	// supress alerts on first run (when state file is empty) only when configured (with -ignore-initial-run)
 	if state == (State{}) && plugin.IgnoreInitialRun {
 		state.Offset = int64(info.Size())
 		state.MatchExpr = plugin.MatchExpr
 		if err := setState(state, stateFile); err != nil {
-			return sensu.CheckStateCritical, fmt.Errorf("error couldn't set state for log file %s: %s", file, err)
+			return sensu.CheckStateCritical, fmt.Errorf("error couldn't set state for log file %s: %s\n", file, err)
 		}
 		return sensu.CheckStateOK, nil
 	}
@@ -421,13 +435,13 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	if offset >= info.Size() {
 		offset = 0
 		if plugin.Verbose {
-			fmt.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
+			fmt.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed\n")
 		}
 	}
 
 	if offset > 0 {
 		if _, err := f.Seek(offset, io.SeekStart); err != nil {
-			return sensu.CheckStateCritical, fmt.Errorf("error couldn't seek file %s to offset %d: %s", file, offset, err)
+			return sensu.CheckStateCritical, fmt.Errorf("error couldn't seek file %s to offset %d: %s\n", file, offset, err)
 
 		}
 	}
@@ -452,7 +466,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 			status = sensu.CheckStateCritical
 		}
 		if err := enc.Encode(result); err != nil {
-			return sensu.CheckStateCritical, fmt.Errorf("error couldn't encode result %+v for file %s: %s", result, result.Path, err)
+			return sensu.CheckStateCritical, fmt.Errorf("error couldn't encode result %+v for file %s: %s\n", result, result.Path, err)
 		}
 		if status < plugin.MatchStatus {
 			status = plugin.MatchStatus
@@ -465,11 +479,11 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	state.Offset = int64(offset + bytesRead)
 	state.MatchExpr = plugin.MatchExpr
 	if plugin.Verbose {
-		fmt.Printf("File %s Match Status %v BytesRead: %v New Offset: %v", file, status, bytesRead, state.Offset)
+		fmt.Printf("File %s Match Status %v BytesRead: %v New Offset: %v\n", file, status, bytesRead, state.Offset)
 	}
 
 	if err := setState(state, stateFile); err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("Error setting state: %s", err)
+		return sensu.CheckStateCritical, fmt.Errorf("Error setting state: %s\n", err)
 	}
 	return status, nil
 }
@@ -515,25 +529,25 @@ func executeCheck(event *corev2.Event) (int, error) {
 
 		// proceed with event generation
 		if event == nil {
-			fmt.Printf("Error: Input event not defined. Event generation aborted")
+			fmt.Printf("Error: Input event not defined. Event generation aborted\n")
 			return sensu.CheckStateWarning, nil
 		}
 		if len(plugin.EventsAPI) == 0 {
-			fmt.Printf("Error: Event API url not defined. Event generation aborted")
+			fmt.Printf("Error: Event API url not defined. Event generation aborted\n")
 			return sensu.CheckStateWarning, nil
 		}
 		outputEvent, err := createEvent(event, status, plugin.CheckNameTemplate, eventBuf.String())
 		if err != nil {
-			fmt.Printf("Error creating event: %s", err)
+			fmt.Printf("Error creating event: %s\n", err)
 			return sensu.CheckStateWarning, nil
 		}
 
 		// if --dry-run selected lets report what we would have sent instead of sending.
 		if plugin.DryRun {
-			fmt.Printf("Dry-run enabled, event to send:\n%+v", outputEvent)
+			fmt.Printf("Dry-run enabled, event to send:\n%+v\n", outputEvent)
 		} else {
 			if err := sendEvent(plugin.EventsAPI, outputEvent); err != nil {
-				fmt.Printf("Error sending event: %s", err)
+				fmt.Printf("Error sending event: %s\n", err)
 				return sensu.CheckStateWarning, nil
 			}
 		}

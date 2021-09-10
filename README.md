@@ -56,6 +56,7 @@ Flags:
   -u, --events-api-url string        Agent Events API URL. (default "http://localhost:3031/events")
   -D, --disable-event-generation     Disable event generation, send results to stdout instead.
   -I, --ignore-initial-run           Suppresses alerts for any matches found on the first run of the plugin.
+  -M, --missing-ok                   Suppresses error if selected log files are missing 
   -i, --inverse-match                Inverse match, only generate alert event if no lines match.
   -r, --reset-state                  Allow automatic state reset if match expression changes, instead of failing.
   -n, --dry-run                      Suppress generation of events and report intended actions instead. (implies verbose)
@@ -79,6 +80,7 @@ Flags:
 |--events-api-url           |CHECK_LOG_EVENTS_API_URL           |
 |--disable-event-generation |CHECK_LOG_DISABLE_EVENT_GENERATION |
 |--ignore-initial-run       |CHECK_LOG_IGNORE_INITIAL_RUN       |
+|--missing-ok               |CHECK_LOG_MISSING_OK               |
 |--inverse-match            |CHECK_LOG_INVERSE_MATCH            |
 |--reset-state              |CHECK_LOG_RESET_STATE              |
 
