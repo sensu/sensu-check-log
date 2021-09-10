@@ -337,10 +337,8 @@ func buildLogArray() error {
 			e = filepath.Walk(absLogPath, func(path string, info os.FileInfo, err error) error {
 				if err == nil && logRegExp.MatchString(info.Name()) {
 					if filepath.IsAbs(path) {
-						if fileInfo, err := os.Stat(path); err == nil {
-							if !fileInfo.IsDir() {
-								logs = append(logs, path)
-							}
+						if !info.IsDir() {
+							logs = append(logs, path)
 						}
 					} else {
 						return fmt.Errorf("Path %s not absolute", path)
