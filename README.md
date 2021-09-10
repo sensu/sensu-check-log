@@ -12,6 +12,7 @@
   - [Environment variables](#environment-variables)
   - [Event generation](#event-generation)
   - [Annotations](#annotations)
+  - [Logfile Name Regexp Matching](#logfile-name-regexp-matching)
 - [Configuration](#configuration)
   - [Asset registration](#asset-registration)
   - [Check definition](#check-definition)
@@ -123,6 +124,14 @@ sensu-agent configuration snippet similar to this:
 annotations:
   sensu.io/plugins/sensu-check-log/config/events-api-url: 'http://127.0.0.1:7342'
 ```
+
+### Logfile Name Regexp Matching]
+It's possible to use a regexp to match for all logfile names matching a pattern `--log-file-expr` starting from from a base directory defined by `--log-path`
+The directory defined by `--log-path` will be walked and all files will be tested for matching the `--log-file-expr` expression.
+
+#### Example
+To process all files ending in `.log` under the directory `/var/log/` use: `--log-file-expr '\.log$' --log-path "/var/log"`
+
 
 
 ## Configuration
