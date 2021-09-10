@@ -49,7 +49,10 @@ Flags:
   -e, --log-file-expr string         Log file regexp to check. (Required if --log-file not used)
   -m, --match-expr string            RE2 regexp matcher expression. (required)
   -p, --log-path string              Log path for basis of log file regexp. Only finds files under this path. (Required if --log-file-expr used) (default "/var/log/")
-  -s, --match-event-status int       Event status to return on match in generated event. (default 1)
+  -W, --warning-only                 Only issue warning status if matches are found
+  -w, --warning-threshold int        Minimum match count that results in an warning (default 1)
+  -C, --critical-only                Only issue critical status if matches are found
+  -c, --critical-threshold int       Minimum match count that results in an warning (default 5)
   -b, --max-bytes int                Max number of bytes to read (0 means unlimited).
   -a, --analyzer-procs int           Number of parallel analyzer processes per file. 
   -t, --check-name-template string   Check name to use in generated events (default "{{ .Check.Name }}-alert")
@@ -72,7 +75,10 @@ Flags:
 |--log-file-expr            |CHECK_LOG_FILE_EXPR                |
 |--log-path                 |CHECK_LOG_PATH                     |
 |--match-expr               |CHECK_LOG_MATCH_EXPR               |
-|--match-event-status       |CHECK_LOG_MATCH_EVENT_STATUS       |
+|--warning-only             |CHECK_LOG_WARNING_ONLY             |
+|--warning-threshold        |CHECK_LOG_WARNING_THRESHOLD        |
+|--critical-only            |CHECK_LOG_CRITICAL_ONLY            |
+|--critical-threshold       |CHECK_LOG_CRITICAL_THRESHOLD       |
 |--max-bytes                |CHECK_LOG_MAX_BYTES                |
 |--analyzer-procs           |CHECK_LOG_ANALYZER_PROCS           |
 |--check-name-template      |CHECK_LOG_CHECK_NAME_TEMPLATE      |
