@@ -512,7 +512,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		numResults++
 	}
 	if plugin.Verbose {
-		fmt.Printf("File %s Match Count: %v", file, numResults)
+		fmt.Printf("File %s Match Count: %v\n", file, numResults)
 	}
 	bytesRead := analyzer.BytesRead()
 	state.Offset = int64(offset + bytesRead)
