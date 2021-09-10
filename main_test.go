@@ -37,9 +37,12 @@ func clearPlugin() {
 	plugin.LogPath = ""
 	plugin.StateDir = ""
 	plugin.DryRun = false
-	plugin.MatchStatus = 0
 	plugin.IgnoreInitialRun = false
 	plugin.InverseMatch = false
+	plugin.WarningOnly = false
+	plugin.CriticalOnly = false
+	plugin.WarningThreshold = 0
+	plugin.CriticalThreshold = 0
 }
 
 func TestStdin(t *testing.T) {
@@ -48,12 +51,37 @@ func TestStdin(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, false, test)
 }
-
+func TestSetStatus(t *testing.T) {
+	clearPlugin()
+	numMatches := 10
+	status := setStatus(numMatches)
+	assert.Equal(t, 0, status)
+	plugin.WarningThreshold = 1
+	status = setStatus(numMatches)
+	assert.Equal(t, 1, status)
+	plugin.WarningThreshold = 11
+	status = setStatus(numMatches)
+	assert.Equal(t, 0, status)
+	plugin.WarningThreshold = 1
+	plugin.CriticalThreshold = 8
+	status = setStatus(numMatches)
+	assert.Equal(t, 2, status)
+	plugin.WarningOnly = true
+	status = setStatus(numMatches)
+	assert.Equal(t, 1, status)
+	plugin.CriticalOnly = true
+	plugin.WarningOnly = false
+	numMatches = 5
+	status = setStatus(numMatches)
+	assert.Equal(t, 0, status)
+}
 func TestCheckArgs(t *testing.T) {
 	clearPlugin()
 	status, err := checkArgs(nil)
 	assert.Error(t, err)
 	assert.Equal(t, 2, status)
+	plugin.WarningThreshold = 1
+	plugin.CriticalThreshold = 2
 	event := corev2.FixtureEvent("foo", "bar")
 	status, err = checkArgs(event)
 	assert.Error(t, err)
@@ -150,14 +178,24 @@ func TestExecuteCheckWithDisableEvent(t *testing.T) {
 	plugin.DisableEvent = true
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.MatchExpr = "test"
-	plugin.MatchStatus = 40
+	plugin.WarningThreshold = 1
+	plugin.WarningOnly = true
 	td, err := ioutil.TempDir("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
 	status, err := executeCheck(nil)
 	assert.NoError(t, err)
-	assert.Equal(t, 40, status)
+	assert.Equal(t, 1, status)
+	plugin.CriticalThreshold = 1
+	plugin.CriticalOnly = true
+	ctd, err := ioutil.TempDir("", "")
+	defer os.RemoveAll(ctd)
+	assert.NoError(t, err)
+	plugin.StateDir = ctd
+	status, err = executeCheck(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, status)
 }
 func TestExecuteCheckWithNoEvent(t *testing.T) {
 	plugin.Verbose = true
@@ -165,7 +203,6 @@ func TestExecuteCheckWithNoEvent(t *testing.T) {
 	plugin.DisableEvent = false
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.MatchExpr = "test"
-	plugin.MatchStatus = 40
 	td, err := ioutil.TempDir("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
@@ -181,7 +218,6 @@ func TestExecuteCheckWithNoEventAndFileError(t *testing.T) {
 	plugin.DisableEvent = false
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.MatchExpr = "test"
-	plugin.MatchStatus = 40
 	td, err := ioutil.TempDir("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
@@ -207,7 +243,6 @@ func TestExecuteWithEvent(t *testing.T) {
 	plugin.DisableEvent = false
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.MatchExpr = "test"
-	plugin.MatchStatus = 40
 
 	// no events api defined error
 	td, err := ioutil.TempDir("", "")
@@ -267,7 +302,6 @@ func TestProcessLogFile(t *testing.T) {
 	plugin.MaxBytes = 4000
 	plugin.Procs = 1
 	plugin.DisableEvent = true
-	plugin.MatchStatus = 40
 	logs = []string{}
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.MatchExpr = "test"
@@ -288,11 +322,12 @@ func TestProcessLogFile(t *testing.T) {
 	assert.NoError(t, err)
 	plugin.StateDir = td
 	plugin.MatchExpr = "test"
+	plugin.WarningOnly = true
 	err = buildLogArray()
 	assert.NoError(t, err)
-	status, err := processLogFile(logs[0], enc)
+	matches, err := processLogFile(logs[0], enc)
 	assert.NoError(t, err)
-	assert.Equal(t, 40, status)
+	assert.Equal(t, 1, matches)
 
 	// test for abs log file path err
 	logs = []string{}
@@ -300,14 +335,14 @@ func TestProcessLogFile(t *testing.T) {
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
-	status, err = processLogFile(plugin.LogFile, enc)
+	matches, err = processLogFile(plugin.LogFile, enc)
 	assert.Error(t, err)
-	assert.Equal(t, 2, status)
+	assert.Equal(t, 0, matches)
 	err = buildLogArray()
 	assert.NoError(t, err)
-	status, err = processLogFile(logs[0], enc)
+	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
-	assert.Equal(t, 40, status)
+	assert.Equal(t, 1, matches)
 
 	// test for IgnoreFirstRun
 	plugin.IgnoreInitialRun = true
@@ -318,9 +353,9 @@ func TestProcessLogFile(t *testing.T) {
 	plugin.StateDir = td
 	err = buildLogArray()
 	assert.NoError(t, err)
-	status, err = processLogFile(logs[0], enc)
+	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, status)
+	assert.Equal(t, 0, matches)
 	plugin.IgnoreInitialRun = false
 	td, err = ioutil.TempDir("", "")
 	defer os.RemoveAll(td)
@@ -328,46 +363,46 @@ func TestProcessLogFile(t *testing.T) {
 	plugin.StateDir = td
 	err = buildLogArray()
 	assert.NoError(t, err)
-	status, err = processLogFile(logs[0], enc)
+	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
-	assert.Equal(t, 40, status)
+	assert.Equal(t, 1, matches)
 
 	// test for state mismatch error
 	plugin.MatchExpr = "hmm"
-	status, err = processLogFile(logs[0], enc)
+	matches, err = processLogFile(logs[0], enc)
 	assert.Error(t, err)
-	assert.Equal(t, 2, status)
+	assert.Equal(t, 0, matches)
 	plugin.EnableStateReset = true
-	status, err = processLogFile(logs[0], enc)
+	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, status)
+	assert.Equal(t, 0, matches)
 	plugin.InverseMatch = true
 	plugin.EnableStateReset = false
-	status, err = processLogFile(logs[0], enc)
+	matches, err = processLogFile(logs[0], enc)
 	assert.Error(t, err)
-	assert.Equal(t, 2, status)
+	assert.Equal(t, 0, matches)
 	plugin.EnableStateReset = true
-	status, err = processLogFile(logs[0], enc)
+	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
-	assert.Equal(t, 40, status)
+	assert.Equal(t, 1, matches)
 
 	// Do not run error condition tests that require chmod on windows, they will fail
 	if runtime.GOOS != "windows" {
 		// test for read log file error
 		err = os.Chmod("./testingdata/test.log", 0000)
 		assert.NoError(t, err)
-		status, err = processLogFile(logs[0], enc)
+		matches, err = processLogFile(logs[0], enc)
 		assert.Error(t, err)
-		assert.Equal(t, 2, status)
+		assert.Equal(t, 0, matches)
 		err = os.Chmod("./testingdata/test.log", 0755)
 		assert.NoError(t, err)
 
 		// test for state file read error
 		err = os.Chmod(td, 0000)
 		assert.NoError(t, err)
-		status, err = processLogFile(logs[0], enc)
+		matches, err = processLogFile(logs[0], enc)
 		assert.Error(t, err)
-		assert.Equal(t, 2, status)
+		assert.Equal(t, 0, matches)
 		err = os.Chmod(td, 0755)
 		assert.NoError(t, err)
 
@@ -378,9 +413,9 @@ func TestProcessLogFile(t *testing.T) {
 		plugin.StateDir = td
 		err = os.Chmod(td, 0500)
 		assert.NoError(t, err)
-		status, err = processLogFile(logs[0], enc)
+		matches, err = processLogFile(logs[0], enc)
 		assert.Error(t, err)
-		assert.Equal(t, 2, status)
+		assert.Equal(t, 0, matches)
 		err = os.Chmod(td, 0755)
 		assert.NoError(t, err)
 	}
@@ -391,7 +426,6 @@ func TestProcessLogFileRotatedFile(t *testing.T) {
 	plugin.Verbose = true
 	plugin.Procs = 1
 	plugin.DisableEvent = true
-	plugin.MatchStatus = 40
 	plugin.MatchExpr = "brown"
 	logs = []string{}
 
@@ -419,9 +453,9 @@ func TestProcessLogFileRotatedFile(t *testing.T) {
 
 	err = buildLogArray()
 	assert.NoError(t, err)
-	status, err := processLogFile(logs[0], enc)
+	matches, err := processLogFile(logs[0], enc)
 	assert.NoError(t, err)
-	assert.Equal(t, 40, status)
+	assert.Equal(t, 1, matches)
 
 	//rotate the file
 	os.Remove(plugin.LogFile)
@@ -435,9 +469,9 @@ func TestProcessLogFileRotatedFile(t *testing.T) {
 	assert.NoError(t, err)
 	err = buildLogArray()
 	assert.NoError(t, err)
-	status, err = processLogFile(logs[0], enc)
+	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
-	assert.Equal(t, 40, status)
+	assert.Equal(t, 1, matches)
 
 	//append file and test offset seeking
 	f, err = os.OpenFile(plugin.LogFile,
@@ -448,8 +482,8 @@ func TestProcessLogFileRotatedFile(t *testing.T) {
 	f.Close()
 	_, err = ioutil.ReadFile(plugin.LogFile)
 	assert.NoError(t, err)
-	status, err = processLogFile(logs[0], enc)
+	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
-	assert.Equal(t, 40, status)
+	assert.Equal(t, 1, matches)
 
 }
