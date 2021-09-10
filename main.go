@@ -40,7 +40,7 @@ type Config struct {
 	WarningOnly       bool
 	CriticalThreshold int
 	CriticalOnly      bool
-  CheckNameTemplate string
+	CheckNameTemplate string
 }
 
 var (
@@ -416,12 +416,11 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		if plugin.MissingOK {
-			return 0 , nil
-    } else {
-		  return 0, fmt.Errorf("error couldn't open log file %s: %s", file, err)
-	}
-
+			return 0, nil
+		} else {
+			return 0, fmt.Errorf("error couldn't open log file %s: %s", file, err)
 		}
+
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
