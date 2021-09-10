@@ -293,12 +293,14 @@ func checkArgs(event *corev2.Event) (int, error) {
 	if plugin.StateDir == "" {
 		return sensu.CheckStateCritical, fmt.Errorf("--state-directory not specified")
 	}
-	_, err := os.Stat(plugin.StateDir)
-	if errors.Is(err, os.ErrNotExist) {
-		return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist", plugin.StateDir)
+	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(plugin.StateDir, os.ModePerm)
+		if err != nil {
+			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created.", plugin.StateDir)
+		}
 	}
-	if plugin.MatchExpr == "" {
-		return sensu.CheckStateCritical, fmt.Errorf("--match-expr not specified")
+	if _, err := os.Stat(plugin.StateDir); err != nil {
+		return sensu.CheckStateCritical, fmt.Errorf("Unexpected error accessing --state-directory %s: %s", plugin.StateDir, err)
 	}
 	if plugin.DryRun {
 		plugin.Verbose = true
@@ -373,7 +375,9 @@ func buildLogArray() error {
 			e = filepath.Walk(absLogPath, func(path string, info os.FileInfo, err error) error {
 				if err == nil && logRegExp.MatchString(info.Name()) {
 					if filepath.IsAbs(path) {
-						logs = append(logs, path)
+						if !info.IsDir() {
+							logs = append(logs, path)
+						}
 					} else {
 						return fmt.Errorf("Path %s not absolute", path)
 					}
@@ -387,7 +391,7 @@ func buildLogArray() error {
 	}
 	logs = removeDuplicates(logs)
 	if plugin.Verbose {
-		fmt.Printf("Log file array to process: %v", logs)
+		fmt.Printf("Log file array to process: %v\n", logs)
 	}
 	return e
 }
@@ -457,7 +461,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	if offset >= info.Size() {
 		offset = 0
 		if plugin.Verbose {
-			fmt.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
+			fmt.Println("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed")
 		}
 	}
 
@@ -499,7 +503,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	state.Offset = int64(offset + bytesRead)
 	state.MatchExpr = plugin.MatchExpr
 	if plugin.Verbose {
-		fmt.Printf("File %s Match Status %v BytesRead: %v New Offset: %v", file, status, bytesRead, state.Offset)
+		fmt.Printf("File %s Match Status %v BytesRead: %v New Offset: %v\n", file, status, bytesRead, state.Offset)
 	}
 
 	if err := setState(state, stateFile); err != nil {

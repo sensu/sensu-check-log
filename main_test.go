@@ -100,15 +100,16 @@ func TestCheckArgs(t *testing.T) {
 	assert.Equal(t, 2, status)
 	plugin.StateDir = "missing_dir"
 	status, err = checkArgs(event)
-	assert.Error(t, err)
-	assert.Equal(t, 2, status)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, status)
 	td, err := ioutil.TempDir("", "")
 	assert.NoError(t, err)
 	defer os.RemoveAll(td)
 	plugin.StateDir = td
 	status, err = checkArgs(event)
-	assert.Error(t, err)
-	assert.Equal(t, 2, status)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, status)
+	defer os.RemoveAll(td)
 	plugin.MatchExpr = "error"
 	status, err = checkArgs(event)
 	assert.NoError(t, err)
