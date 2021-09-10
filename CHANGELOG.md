@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.4.0] - 2021-09-10
+
+### Breaking Changes
+* Removed --match-event-status argument and replaced with match number based status controlled by --critical-threshold and --warning-threshold 
+* Will now attempt to create state directory if it doesnt not exist
+
+### Added
+* Added --missing-ok to suppress errors if requested log file not found 
+* Added --critical-threshold to set matching number needed to raise critical event status
+* Added --warning-threshold to set matching number needed to raise warning event status
+* Added --warning-only to make sure only warning event status is sent (even if critical threshold reached)
+* Added --critical-only to make sure only critical event status is sent
+
+### Fixed
+* Will now correctly traverse subdirectories of --log-path when looking for file names that match the regexp provided by --log-file-expr   
+* Silenced annotation override information messages when check annotations are used.
+
 ## [0.3.0] - 2021-08-06
 
 ### Breaking Changes
