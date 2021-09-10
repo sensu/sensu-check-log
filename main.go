@@ -491,11 +491,6 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 			return 0, fmt.Errorf("error couldn't encode result %+v for file %s: %s", result, result.Path, err)
 		}
 		numResults++
-		/*
-			if status < plugin.MatchStatus {
-				status = plugin.MatchStatus
-			}
-		*/
 	}
 	if plugin.Verbose {
 		fmt.Printf("File %s Match Count: %v", file, numResults)
