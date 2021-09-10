@@ -257,12 +257,14 @@ func checkArgs(event *corev2.Event) (int, error) {
 	if plugin.StateDir == "" {
 		return sensu.CheckStateCritical, fmt.Errorf("--state-directory not specified")
 	}
-	_, err := os.Stat(plugin.StateDir)
-	if errors.Is(err, os.ErrNotExist) {
-		return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist", plugin.StateDir)
+	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(plugin.StateDir, os.ModePerm)
+		if err != nil {
+			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created.", plugin.StateDir)
+		}
 	}
-	if plugin.MatchExpr == "" {
-		return sensu.CheckStateCritical, fmt.Errorf("--match-expr not specified")
+	if _, err := os.Stat(plugin.StateDir); err != nil {
+		return sensu.CheckStateCritical, fmt.Errorf("Unexpected error accessing --state-directory %s: %s", plugin.StateDir, err)
 	}
 	if plugin.DryRun {
 		plugin.Verbose = true
