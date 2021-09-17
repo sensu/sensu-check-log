@@ -157,9 +157,26 @@ func TestState(t *testing.T) {
 func TestBuildLogArray(t *testing.T) {
 	err := buildLogArray()
 	assert.NoError(t, err)
-	plugin.LogFile = "./testingdata/test.log"
 	err = os.Chmod("./testingdata/test.log", 0755)
 	assert.NoError(t, err)
+
+	logs = []string{}
+	plugin.LogFile = "./testingdata/test.log"
+	plugin.LogPath = ""
+	plugin.LogFileExpr = ""
+	plugin.Verbose = false
+	err = buildLogArray()
+	if err != nil {
+		t.Errorf("BuildLogArray err: %s", err)
+	}
+	if len(logs) != 1 {
+		t.Errorf("BuildLogArray len %v", len(logs))
+	}
+	for _, log := range logs {
+		assert.Contains(t, log, "/testingdata/test.log")
+	}
+	logs = []string{}
+	plugin.LogFile = ""
 	plugin.LogPath = "testingdata/"
 	plugin.LogFileExpr = "test.log"
 	plugin.Verbose = false
@@ -169,6 +186,24 @@ func TestBuildLogArray(t *testing.T) {
 	}
 	if len(logs) != 1 {
 		t.Errorf("BuildLogArray len %v", len(logs))
+	}
+	for _, log := range logs {
+		assert.Contains(t, log, "/testingdata/test.log")
+	}
+	logs = []string{}
+	plugin.LogFile = ""
+	plugin.LogPath = `testingdata/`
+	plugin.LogFileExpr = `webserver`
+	plugin.Verbose = false
+	err = buildLogArray()
+	if err != nil {
+		t.Errorf("BuildLogArray err: %s", err)
+	}
+	if len(logs) != 3 {
+		t.Errorf("BuildLogArray len %v", len(logs))
+	}
+	for _, log := range logs {
+		assert.Contains(t, log, "access.log")
 	}
 
 }

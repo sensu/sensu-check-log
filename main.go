@@ -380,10 +380,13 @@ func buildLogArray() error {
 			return e
 		}
 		absLogPath, _ := filepath.Abs(plugin.LogPath)
+		if plugin.Verbose {
+			fmt.Printf("Searching for matching file names in: %v\n", absLogPath)
+		}
 
 		if filepath.IsAbs(absLogPath) {
 			e = filepath.Walk(absLogPath, func(path string, info os.FileInfo, err error) error {
-				if err == nil && logRegExp.MatchString(info.Name()) {
+				if err == nil && logRegExp.MatchString(path) {
 					if filepath.IsAbs(path) {
 						if !info.IsDir() {
 							logs = append(logs, path)
