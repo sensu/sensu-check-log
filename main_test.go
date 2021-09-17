@@ -173,7 +173,11 @@ func TestBuildLogArray(t *testing.T) {
 		t.Errorf("BuildLogArray len %v", len(logs))
 	}
 	for _, log := range logs {
-		assert.Contains(t, log, "/testingdata/test.log")
+		if runtime.GOOS != "windows" {
+			assert.Contains(t, log, `/testingdata/test.log`)
+		} else {
+			assert.Contains(t, log, `\testingdata\test.log`)
+		}
 	}
 	logs = []string{}
 	plugin.LogFile = ""
@@ -188,7 +192,11 @@ func TestBuildLogArray(t *testing.T) {
 		t.Errorf("BuildLogArray len %v", len(logs))
 	}
 	for _, log := range logs {
-		assert.Contains(t, log, "/testingdata/test.log")
+		if runtime.GOOS != "windows" {
+			assert.Contains(t, log, `/testingdata/test.log`)
+		} else {
+			assert.Contains(t, log, `\testingdata\test.log`)
+		}
 	}
 	logs = []string{}
 	plugin.LogFile = ""
