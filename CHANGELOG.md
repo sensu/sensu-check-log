@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## [0.4.1] - 2021-09-20
+
+### Fixed
+* --log-file-expr  will match directory elements in fully qualified file path instead of just filename 
+
 ## [0.4.0] - 2021-09-10
 
 ### Breaking Changes
