@@ -155,17 +155,16 @@ func TestState(t *testing.T) {
 }
 
 func TestBuildLogArray(t *testing.T) {
-	err := buildLogArray()
+	logs, err := buildLogArray()
 	assert.NoError(t, err)
 	err = os.Chmod("./testingdata/test.log", 0755)
 	assert.NoError(t, err)
 
-	logs = []string{}
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.LogPath = ""
 	plugin.LogFileExpr = ""
 	plugin.Verbose = false
-	err = buildLogArray()
+	logs, err = buildLogArray()
 	if err != nil {
 		t.Errorf("BuildLogArray err: %s", err)
 	}
@@ -179,12 +178,11 @@ func TestBuildLogArray(t *testing.T) {
 			assert.Contains(t, log, `\testingdata\test.log`)
 		}
 	}
-	logs = []string{}
 	plugin.LogFile = ""
 	plugin.LogPath = "testingdata/"
 	plugin.LogFileExpr = "test.log"
 	plugin.Verbose = false
-	err = buildLogArray()
+	logs, err = buildLogArray()
 	if err != nil {
 		t.Errorf("BuildLogArray err: %s", err)
 	}
@@ -198,12 +196,11 @@ func TestBuildLogArray(t *testing.T) {
 			assert.Contains(t, log, `\testingdata\test.log`)
 		}
 	}
-	logs = []string{}
 	plugin.LogFile = ""
 	plugin.LogPath = `testingdata/`
 	plugin.LogFileExpr = `webserver`
 	plugin.Verbose = false
-	err = buildLogArray()
+	logs, err = buildLogArray()
 	if err != nil {
 		t.Errorf("BuildLogArray err: %s", err)
 	}
@@ -346,7 +343,6 @@ func TestProcessLogFile(t *testing.T) {
 	plugin.MaxBytes = 4000
 	plugin.Procs = 1
 	plugin.DisableEvent = true
-	logs = []string{}
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.MatchExpr = "test"
 
@@ -360,14 +356,13 @@ func TestProcessLogFile(t *testing.T) {
 	enc := json.NewEncoder(eventBuf)
 
 	// test for good match
-	logs = []string{}
 	td, err = ioutil.TempDir("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
 	plugin.MatchExpr = "test"
 	plugin.WarningOnly = true
-	err = buildLogArray()
+	logs, err := buildLogArray()
 	assert.NoError(t, err)
 	matches, err := processLogFile(logs[0], enc)
 	assert.NoError(t, err)
@@ -382,7 +377,7 @@ func TestProcessLogFile(t *testing.T) {
 	matches, err = processLogFile(plugin.LogFile, enc)
 	assert.Error(t, err)
 	assert.Equal(t, 0, matches)
-	err = buildLogArray()
+	logs, err = buildLogArray()
 	assert.NoError(t, err)
 	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
@@ -390,12 +385,11 @@ func TestProcessLogFile(t *testing.T) {
 
 	// test for IgnoreFirstRun
 	plugin.IgnoreInitialRun = true
-	logs = []string{}
 	td, err = ioutil.TempDir("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
-	err = buildLogArray()
+	logs, err = buildLogArray()
 	assert.NoError(t, err)
 	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
@@ -405,7 +399,7 @@ func TestProcessLogFile(t *testing.T) {
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
-	err = buildLogArray()
+	logs, err = buildLogArray()
 	assert.NoError(t, err)
 	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
@@ -471,7 +465,6 @@ func TestProcessLogFileRotatedFile(t *testing.T) {
 	plugin.Procs = 1
 	plugin.DisableEvent = true
 	plugin.MatchExpr = "brown"
-	logs = []string{}
 
 	td, err := ioutil.TempDir("", "")
 	assert.NoError(t, err)
@@ -495,7 +488,7 @@ func TestProcessLogFileRotatedFile(t *testing.T) {
 	eventBuf := new(bytes.Buffer)
 	enc := json.NewEncoder(eventBuf)
 
-	err = buildLogArray()
+	logs, err := buildLogArray()
 	assert.NoError(t, err)
 	matches, err := processLogFile(logs[0], enc)
 	assert.NoError(t, err)
@@ -511,7 +504,7 @@ func TestProcessLogFileRotatedFile(t *testing.T) {
 	f.Close()
 	_, err = ioutil.ReadFile(plugin.LogFile)
 	assert.NoError(t, err)
-	err = buildLogArray()
+	logs, err = buildLogArray()
 	assert.NoError(t, err)
 	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)

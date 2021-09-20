@@ -45,7 +45,6 @@ type Config struct {
 
 var (
 	defaultNameTemplate = "{{ .Check.Name }}-alert"
-	logs                = []string{}
 	plugin              = Config{
 		PluginConfig: sensu.PluginConfig{
 			Name:     "sensu-check-log",
@@ -360,24 +359,25 @@ func removeDuplicates(elements []string) []string { // change string to int here
 	return result
 }
 
-func buildLogArray() error {
+func buildLogArray() ([]string, error) {
+	logs := []string{}
 	var e error
 	if plugin.LogFile != "" {
 		absPath, e := filepath.Abs(plugin.LogFile)
 		if e != nil {
-			return e
+			return nil, e
 		}
 		if filepath.IsAbs(absPath) {
 			logs = append(logs, absPath)
 		} else {
-			return fmt.Errorf("Path %s not absolute", absPath)
+			return nil, fmt.Errorf("Path %s not absolute", absPath)
 		}
 
 	}
 	if len(plugin.LogPath) > 0 && len(plugin.LogFileExpr) > 0 {
 		logRegExp, e := regexp.Compile(plugin.LogFileExpr)
 		if e != nil {
-			return e
+			return nil, e
 		}
 		absLogPath, _ := filepath.Abs(plugin.LogPath)
 		if plugin.Verbose {
@@ -398,7 +398,7 @@ func buildLogArray() error {
 				return nil
 			})
 			if e != nil {
-				return e
+				return nil, e
 			}
 		}
 	}
@@ -406,7 +406,7 @@ func buildLogArray() error {
 	if plugin.Verbose {
 		fmt.Printf("Log file array to process: %v\n", logs)
 	}
-	return e
+	return logs, e
 }
 
 func processLogFile(file string, enc *json.Encoder) (int, error) {
@@ -563,7 +563,7 @@ func setStatus(numMatches int) int {
 
 func executeCheck(event *corev2.Event) (int, error) {
 	var status int
-	e := buildLogArray()
+	logs, e := buildLogArray()
 	if e != nil {
 		return sensu.CheckStateCritical, e
 	}
