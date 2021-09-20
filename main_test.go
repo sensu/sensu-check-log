@@ -156,6 +156,7 @@ func TestState(t *testing.T) {
 
 func TestBuildLogArray(t *testing.T) {
 	logs, err := buildLogArray()
+	assert.Equal(t, 0, len(logs))
 	assert.NoError(t, err)
 	err = os.Chmod("./testingdata/test.log", 0755)
 	assert.NoError(t, err)
@@ -369,7 +370,6 @@ func TestProcessLogFile(t *testing.T) {
 	assert.Equal(t, 1, matches)
 
 	// test for abs log file path err
-	logs = []string{}
 	td, err = ioutil.TempDir("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
