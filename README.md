@@ -151,7 +151,7 @@ If you're using an earlier version of sensuctl, you can find the asset on the [B
 
 #### sensu-check-log
 
-Example of configuring a check configuration to match the word 'error' in a case-insensitive manner using [RE compatible regexp syntax][11]"
+Example of configuring a check configuration to match the word 'error' in a case-insensitive manner using [RE compatible regexp syntax][11]
 
 ```yml
 ---
@@ -167,7 +167,7 @@ spec:
 
 ```
 
-Example of configuring a check configuration to match lines without the word 'success' in a case-insensitive manner using [RE compatible regexp syntax][11]"
+Example of configuring a check configuration to match lines without the word 'success' in a case-insensitive manner using [RE compatible regexp syntax][11]
 
 ```yml
 ---
@@ -182,6 +182,24 @@ spec:
   - sensu/sensu-check-log
 
 ```
+
+Example of configuring a check configuration to match lines with the word 'error' in a case-insensitive manner for all log filepaths under `/var/log` ending with `webserver-.*/access.log` files using [RE compatible regexp syntax][11]
+
+```yml
+---
+type: CheckConfig
+api_version: core/v2
+metadata:
+  name: sensu-check-log
+spec:
+  command: sensu-check-log -p /var/log/ -e "webserver-.*/access.log$" -m "(?i)error" -d /tmp/sensu-check-access-log-error/
+  stdin: true
+  runtime_assets:
+  - sensu/sensu-check-log
+
+```
+
+
 
 ## Installation from source
 
