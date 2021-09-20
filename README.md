@@ -183,7 +183,7 @@ spec:
 
 ```
 
-Example of configuring a check configuration to match lines with the word 'error' in a case-insensitive manner for all log filepaths under `/var/log` ending with `webserver-.*/access.log` files using [RE compatible regexp syntax][11]
+Example of configuring a check configuration to match lines with the word 'error' in a case-insensitive manner for all log filepaths under `/var/log` ending with `webserver-.*/access.log`  using [RE compatible regexp syntax][11]
 
 ```yml
 ---
