@@ -41,6 +41,7 @@ type Config struct {
 	CriticalThreshold int
 	CriticalOnly      bool
 	CheckNameTemplate string
+	EvalSymlinks      bool
 }
 
 var (
@@ -232,6 +233,14 @@ var (
 			Usage:     "Suppress generation of events and report intended actions instead. (implies verbose)",
 			Value:     &plugin.DryRun,
 		},
+		&sensu.PluginConfigOption{
+			Path:      "follow-symlinks",
+			Argument:  "follow-symklinks",
+			Shorthand: "s",
+			Default:   false,
+			Usage:     "Follow symlinks when using filepath regexp matching",
+			Value:     &plugin.EvalSymlinks,
+		},
 	}
 )
 
@@ -379,15 +388,33 @@ func buildLogArray() ([]string, error) {
 		if e != nil {
 			return nil, e
 		}
-		absLogPath, _ := filepath.Abs(plugin.LogPath)
+		path := plugin.LogPath
+		if plugin.EvalSymlinks {
+			path, e = filepath.EvalSymlinks(plugin.LogPath)
+
+			if plugin.Verbose && path != plugin.LogPath {
+				fmt.Printf("Path symlinks evaluated: %v -> %v\n", plugin.LogPath, path)
+			}
+			if e != nil {
+				return nil, e
+			}
+		}
+		absLogPath, _ := filepath.Abs(path)
+
 		if plugin.Verbose {
 			fmt.Printf("Searching for matching file names in: %v\n", absLogPath)
 		}
-
 		if filepath.IsAbs(absLogPath) {
 			e = filepath.Walk(absLogPath, func(path string, info os.FileInfo, err error) error {
 				if err == nil && logRegExp.MatchString(path) {
-					if filepath.IsAbs(path) {
+					p := path
+					if plugin.EvalSymlinks {
+						p, e = filepath.EvalSymlinks(path)
+						if e != nil {
+							return fmt.Errorf("Error evaluating symlinks for %s", path)
+						}
+					}
+					if filepath.IsAbs(p) {
 						if !info.IsDir() {
 							logs = append(logs, path)
 						}

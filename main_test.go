@@ -43,6 +43,7 @@ func clearPlugin() {
 	plugin.CriticalOnly = false
 	plugin.WarningThreshold = 0
 	plugin.CriticalThreshold = 0
+	plugin.EvalSymlinks = false
 }
 
 func TestStdin(t *testing.T) {
@@ -201,6 +202,21 @@ func TestBuildLogArray(t *testing.T) {
 	plugin.LogPath = `testingdata/`
 	plugin.LogFileExpr = `webserver`
 	plugin.Verbose = false
+	logs, err = buildLogArray()
+	if err != nil {
+		t.Errorf("BuildLogArray err: %s", err)
+	}
+	if len(logs) != 3 {
+		t.Errorf("BuildLogArray len %v", len(logs))
+	}
+	for _, log := range logs {
+		assert.Contains(t, log, "access.log")
+	}
+	plugin.LogFile = ""
+	plugin.LogPath = `testinglink/`
+	plugin.LogFileExpr = `webserver`
+	plugin.Verbose = false
+	plugin.EvalSymlinks = true
 	logs, err = buildLogArray()
 	if err != nil {
 		t.Errorf("BuildLogArray err: %s", err)
