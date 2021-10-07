@@ -494,6 +494,11 @@ func TestProcessLogFileRotatedFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, matches)
 
+	//re-run should have no new matches
+	matches, err = processLogFile(logs[0], enc)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, matches)
+
 	//rotate the file
 	os.Remove(plugin.LogFile)
 	f, err = os.OpenFile(plugin.LogFile,
