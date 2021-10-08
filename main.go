@@ -476,17 +476,25 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	offset := state.Offset
 	// Are we looking at freshly rotated file since last time we run?
 	// If so let's reset the offset back to 0 and read the file again
-	if offset >= info.Size() {
+
+	if offset > info.Size() {
 		offset = 0
 		if plugin.Verbose {
-			fmt.Printf("Resetting offset to zero, because cached offset is beyond end of file and modtime is newer than last time processed\n")
+			fmt.Printf("Resetting offset to zero, because cached offset is beyond end of file, indicating file has been rotated, truncated or replaced\n")
 		}
 	}
 
 	if offset > 0 {
-		if _, err := f.Seek(offset, io.SeekStart); err != nil {
-			return 0, fmt.Errorf("error couldn't seek file %s to offset %d: %s", file, offset, err)
+		if offset == info.Size() {
+			if plugin.Verbose {
+				fmt.Printf("Cached offset in state directory for %s indicates file not updated since last read\n", file)
+				return 0, nil
+			}
+		} else {
+			if _, err := f.Seek(offset, io.SeekStart); err != nil {
+				return 0, fmt.Errorf("error couldn't seek file %s to offset %d: %s", file, offset, err)
 
+			}
 		}
 	}
 
