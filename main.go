@@ -538,8 +538,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	return numResults, nil
 }
 
-func setStatus(numMatches int) int {
-
+func setStatus(currentStatus int, numMatches int) int {
 	status := sensu.CheckStateOK
 	warn := false
 	critical := false
@@ -566,11 +565,16 @@ func setStatus(numMatches int) int {
 			status = sensu.CheckStateCritical
 		}
 	}
-	return status
+	if status > currentStatus {
+		return status
+	} else {
+		return currentStatus
+	}
 }
 
 func executeCheck(event *corev2.Event) (int, error) {
 	var status int
+	status = 0
 	logs, e := buildLogArray()
 	if e != nil {
 		return sensu.CheckStateCritical, e
@@ -587,7 +591,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 			status = sensu.CheckStateOK
 			continue
 		}
-		status = setStatus(numMatches)
+		status = setStatus(status, numMatches)
 
 	} // end of loop over log files
 	if len(fileErrors) > 0 {
