@@ -51,30 +51,109 @@ func TestStdin(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, false, test)
 }
-func TestSetStatus(t *testing.T) {
+
+func TestSettStatusWithCurrentStatusZero(t *testing.T) {
 	clearPlugin()
+	s := 0
 	numMatches := 10
-	status := setStatus(numMatches)
+	status := setStatus(s, numMatches)
 	assert.Equal(t, 0, status)
 	plugin.WarningThreshold = 1
-	status = setStatus(numMatches)
+	status = setStatus(s, numMatches)
 	assert.Equal(t, 1, status)
 	plugin.WarningThreshold = 11
-	status = setStatus(numMatches)
+	status = setStatus(s, numMatches)
 	assert.Equal(t, 0, status)
 	plugin.WarningThreshold = 1
 	plugin.CriticalThreshold = 8
-	status = setStatus(numMatches)
+	status = setStatus(s, numMatches)
 	assert.Equal(t, 2, status)
 	plugin.WarningOnly = true
-	status = setStatus(numMatches)
+	status = setStatus(s, numMatches)
 	assert.Equal(t, 1, status)
 	plugin.CriticalOnly = true
 	plugin.WarningOnly = false
 	numMatches = 5
-	status = setStatus(numMatches)
+	status = setStatus(s, numMatches)
 	assert.Equal(t, 0, status)
 }
+
+func TestSettStatusWithCurrentStatusOne(t *testing.T) {
+	clearPlugin()
+	s := 1
+	numMatches := 10
+	status := setStatus(s, numMatches)
+	assert.Equal(t, 1, status)
+	plugin.WarningThreshold = 1
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 1, status)
+	plugin.WarningThreshold = 11
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 1, status)
+	plugin.WarningThreshold = 1
+	plugin.CriticalThreshold = 8
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 2, status)
+	plugin.WarningOnly = true
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 1, status)
+	plugin.CriticalOnly = true
+	plugin.WarningOnly = false
+	numMatches = 5
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 1, status)
+}
+func TestSettStatusWithCurrentStatusTwo(t *testing.T) {
+	clearPlugin()
+	s := 2
+	numMatches := 10
+	status := setStatus(s, numMatches)
+	assert.Equal(t, 2, status)
+	plugin.WarningThreshold = 1
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 2, status)
+	plugin.WarningThreshold = 11
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 2, status)
+	plugin.WarningThreshold = 1
+	plugin.CriticalThreshold = 8
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 2, status)
+	plugin.WarningOnly = true
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 2, status)
+	plugin.CriticalOnly = true
+	plugin.WarningOnly = false
+	numMatches = 5
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 2, status)
+}
+
+func TestSetStatus(t *testing.T) {
+	clearPlugin()
+	numMatches := 10
+	status := setStatus(0, numMatches)
+	assert.Equal(t, 0, status)
+	plugin.WarningThreshold = 1
+	status = setStatus(0, numMatches)
+	assert.Equal(t, 1, status)
+	plugin.WarningThreshold = 11
+	status = setStatus(0, numMatches)
+	assert.Equal(t, 0, status)
+	plugin.WarningThreshold = 1
+	plugin.CriticalThreshold = 8
+	status = setStatus(0, numMatches)
+	assert.Equal(t, 2, status)
+	plugin.WarningOnly = true
+	status = setStatus(0, numMatches)
+	assert.Equal(t, 1, status)
+	plugin.CriticalOnly = true
+	plugin.WarningOnly = false
+	numMatches = 5
+	status = setStatus(0, numMatches)
+	assert.Equal(t, 0, status)
+}
+
 func TestCheckArgs(t *testing.T) {
 	clearPlugin()
 	status, err := checkArgs(nil)
