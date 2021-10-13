@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2021-10-12
+
+### Fixed
+* Incorrect handling of return state when processing multiple files using file regexp matching
+
 ## [0.4.2] - 2021-10-07
 
 ### Fixed
