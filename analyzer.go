@@ -15,8 +15,9 @@ type Analyzer struct {
 	Path      string
 	Log       io.Reader
 	Func      AnalyzerFunc
-	bytesRead int64
+	Offset    int64
 	wg        sync.WaitGroup
+	bytesRead int64
 }
 
 type discardInterface interface {
@@ -53,6 +54,12 @@ type Result struct {
 	Match   string `json:"match"`
 	Err     error  `json:"error,omitempty"`
 	Inverse bool   `json:"inverse,omitempty"`
+	Offset  int64  `json:"offset"`
+}
+
+type LineMsg struct {
+	Line   []byte
+	Offset int64
 }
 
 func (a *Analyzer) Go(ctx context.Context) <-chan Result {
@@ -74,8 +81,9 @@ func (a *Analyzer) BytesRead() int64 {
 	return a.bytesRead
 }
 
-func (a *Analyzer) startProducer(ctx context.Context) <-chan []byte {
-	result := make(chan []byte, bufSize)
+func (a *Analyzer) startProducer(ctx context.Context) <-chan LineMsg {
+	logLines := make(chan LineMsg, bufSize)
+	currentOffset := a.Offset
 	reader := bufio.NewReaderSize(a.Log, 32*1024*1024)
 	discard := NewDiscardWriter()
 	teeReader := io.TeeReader(reader, discard)
@@ -94,37 +102,39 @@ func (a *Analyzer) startProducer(ctx context.Context) <-chan []byte {
 			copy(lineCopy, line)
 			select {
 			case <-ctx.Done():
-				close(result)
+				close(logLines)
 				return
-			case result <- lineCopy:
+			case logLines <- LineMsg{Line: lineCopy, Offset: currentOffset}:
+				currentOffset += int64(len(line))
 			}
 		}
 		if err := scanner.Err(); err != nil {
 			fatal("error while scanning log: %s :: %s\n", a.Path, err)
 		}
-		close(result)
+		close(logLines)
 	}()
 	go func() {
 		defer a.wg.Done()
 		wg.Wait()
 		a.bytesRead = discard.BytesRead
 	}()
-	return result
+	return logLines
 }
 
-func (a *Analyzer) consumer(ctx context.Context, producer <-chan []byte, results chan<- Result) {
+func (a *Analyzer) consumer(ctx context.Context, producer <-chan LineMsg, results chan<- Result) {
 	defer a.wg.Done()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case line, ok := <-producer:
+		case msg, ok := <-producer:
 			if !ok {
 				return
 			}
-			result := a.Func(line)
+			result := a.Func(msg.Line)
 			if result != nil {
 				result.Path = a.Path
+				result.Offset = msg.Offset
 				select {
 				case results <- *result:
 				case <-ctx.Done():
