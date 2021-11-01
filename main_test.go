@@ -538,9 +538,79 @@ func TestProcessLogFile(t *testing.T) {
 	}
 }
 
-func TestProcessLogFileRotatedFile(t *testing.T) {
+func TestProcessLogFileRotatedFileVerboseTrue(t *testing.T) {
 	clearPlugin()
 	plugin.Verbose = true
+	plugin.Procs = 1
+	plugin.DisableEvent = true
+	plugin.MatchExpr = "brown"
+
+	td, err := ioutil.TempDir("", "")
+	assert.NoError(t, err)
+	defer os.RemoveAll(td)
+	plugin.StateDir = td
+
+	logdir, err := ioutil.TempDir("", "")
+	assert.NoError(t, err)
+	defer os.RemoveAll(logdir)
+
+	plugin.LogFile = logdir + "/test.log"
+	f, err := os.OpenFile(plugin.LogFile,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	assert.NoError(t, err)
+	_, err = f.WriteString("what now brown cow\n")
+	assert.NoError(t, err)
+	f.Close()
+	_, err = ioutil.ReadFile(plugin.LogFile)
+	assert.NoError(t, err)
+
+	eventBuf := new(bytes.Buffer)
+	enc := json.NewEncoder(eventBuf)
+
+	logs, err := buildLogArray()
+	assert.NoError(t, err)
+	matches, err := processLogFile(logs[0], enc)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, matches)
+
+	//re-run should have no new matches
+	matches, err = processLogFile(logs[0], enc)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, matches)
+
+	//rotate the file
+	os.Remove(plugin.LogFile)
+	f, err = os.OpenFile(plugin.LogFile,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	assert.NoError(t, err)
+	_, err = f.WriteString("the brown cow\n")
+	assert.NoError(t, err)
+	f.Close()
+	_, err = ioutil.ReadFile(plugin.LogFile)
+	assert.NoError(t, err)
+	logs, err = buildLogArray()
+	assert.NoError(t, err)
+	matches, err = processLogFile(logs[0], enc)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, matches)
+
+	//append file and test offset seeking
+	f, err = os.OpenFile(plugin.LogFile,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	assert.NoError(t, err)
+	_, err = f.WriteString("brown cows yeah!\n")
+	assert.NoError(t, err)
+	f.Close()
+	_, err = ioutil.ReadFile(plugin.LogFile)
+	assert.NoError(t, err)
+	matches, err = processLogFile(logs[0], enc)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, matches)
+
+}
+func TestProcessLogFileRotatedFileVerboseFalse(t *testing.T) {
+	clearPlugin()
+	plugin.Verbose = false
 	plugin.Procs = 1
 	plugin.DisableEvent = true
 	plugin.MatchExpr = "brown"
