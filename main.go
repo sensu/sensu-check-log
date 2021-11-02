@@ -490,8 +490,8 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		if offset == info.Size() {
 			if plugin.Verbose {
 				fmt.Printf("Cached offset in state directory for %s indicates file not updated since last read\n", file)
-				return 0, nil
 			}
+			return 0, nil
 		} else {
 			if _, err := f.Seek(offset, io.SeekStart); err != nil {
 				return 0, fmt.Errorf("error couldn't seek file %s to offset %d: %s", file, offset, err)
