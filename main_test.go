@@ -608,6 +608,7 @@ func TestProcessLogFileRotatedFileVerboseTrue(t *testing.T) {
 	assert.Equal(t, 1, matches)
 
 }
+
 func TestProcessLogFileRotatedFileVerboseFalse(t *testing.T) {
 	clearPlugin()
 	plugin.Verbose = false
@@ -676,5 +677,48 @@ func TestProcessLogFileRotatedFileVerboseFalse(t *testing.T) {
 	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, matches)
+
+}
+
+func TestProcessLogFileWithNegativeCachedOffset(t *testing.T) {
+
+	clearPlugin()
+	plugin.Verbose = false
+	plugin.Procs = 1
+	plugin.DisableEvent = true
+	plugin.MatchExpr = "brown"
+
+	td, err := ioutil.TempDir("", "")
+	assert.NoError(t, err)
+	defer os.RemoveAll(td)
+	plugin.StateDir = td
+
+	logdir, err := ioutil.TempDir("", "")
+	assert.NoError(t, err)
+	defer os.RemoveAll(logdir)
+
+	plugin.LogFile = logdir + "/test.log"
+	f, err := os.OpenFile(plugin.LogFile,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	assert.NoError(t, err)
+	_, err = f.WriteString("what now brown cow\n")
+	assert.NoError(t, err)
+	f.Close()
+
+	stateFile := filepath.Join(plugin.StateDir, strings.ReplaceAll(plugin.LogFile, string(os.PathSeparator), string("_")))
+	state, err := getState(stateFile)
+	assert.NoError(t, err)
+	state.Offset = -10
+	err = setState(state, stateFile)
+	assert.NoError(t, err)
+
+	eventBuf := new(bytes.Buffer)
+	enc := json.NewEncoder(eventBuf)
+
+	logs, err := buildLogArray()
+	assert.NoError(t, err)
+	matches, err := processLogFile(logs[0], enc)
+	assert.Error(t, err)
+	assert.Equal(t, 0, matches)
 
 }
