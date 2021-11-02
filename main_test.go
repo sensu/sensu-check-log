@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -625,7 +626,7 @@ func TestProcessLogFileRotatedFileVerboseFalse(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(logdir)
 
-	plugin.LogFile = logdir + "/test.log"
+	plugin.LogFile = path.Join(logdir, "test.log")
 	f, err := os.OpenFile(plugin.LogFile,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	assert.NoError(t, err)
@@ -697,7 +698,7 @@ func TestProcessLogFileWithNegativeCachedOffset(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(logdir)
 
-	plugin.LogFile = logdir + "/test.log"
+	plugin.LogFile = path.Join(logdir, "test.log")
 	f, err := os.OpenFile(plugin.LogFile,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	assert.NoError(t, err)
@@ -705,7 +706,7 @@ func TestProcessLogFileWithNegativeCachedOffset(t *testing.T) {
 	assert.NoError(t, err)
 	f.Close()
 
-	stateFile := filepath.Join(plugin.StateDir, strings.ReplaceAll("test.log", string(os.PathSeparator), string("_")))
+	stateFile := filepath.Join(plugin.StateDir, strings.ReplaceAll(plugin.LogFile, string(os.PathSeparator), string("_")))
 	state, err := getState(stateFile)
 	assert.NoError(t, err)
 	state.Offset = -10
