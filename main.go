@@ -477,7 +477,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	// Are we looking at freshly rotated file since last time we run?
 	// If so let's reset the offset back to 0 and read the file again
 	if offset < 0 {
-		offset = 0
+		return 0, fmt.Errorf("error file %s: cached offset is less than 0, possibly corrupt state file: %s", file, stateFile)
 	}
 	if offset > info.Size() {
 		offset = 0
