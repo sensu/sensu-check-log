@@ -705,7 +705,7 @@ func TestProcessLogFileWithNegativeCachedOffset(t *testing.T) {
 	assert.NoError(t, err)
 	f.Close()
 
-	stateFile := filepath.Join(plugin.StateDir, strings.ReplaceAll(plugin.LogFile, string(os.PathSeparator), string("_")))
+	stateFile := filepath.Join(plugin.StateDir, strings.ReplaceAll("test.log", string(os.PathSeparator), string("_")))
 	state, err := getState(stateFile)
 	assert.NoError(t, err)
 	state.Offset = -10
