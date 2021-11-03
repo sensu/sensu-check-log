@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2021-11-01
+
+### Added
+* Extended matching line output json string to include file offset of matching log line.
+
+### Fixed
+* Fixed incorrect handling of stale log file situation when verbose output was disabled.
+
+
+
+
 ## [0.4.3] - 2021-10-12
 
 ### Fixed
