@@ -476,7 +476,9 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	offset := state.Offset
 	// Are we looking at freshly rotated file since last time we run?
 	// If so let's reset the offset back to 0 and read the file again
-
+	if offset < 0 {
+		return 0, fmt.Errorf("error file %s: cached offset is less than 0, possibly corrupt state file: %s", file, stateFile)
+	}
 	if offset > info.Size() {
 		offset = 0
 		if plugin.Verbose {
@@ -504,10 +506,11 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	}
 
 	analyzer := Analyzer{
-		Path:  file,
-		Procs: plugin.Procs,
-		Log:   reader,
-		Func:  AnalyzeRegexp(plugin.MatchExpr),
+		Path:   file,
+		Procs:  plugin.Procs,
+		Log:    reader,
+		Offset: offset,
+		Func:   AnalyzeRegexp(plugin.MatchExpr),
 	}
 
 	status := sensu.CheckStateOK
