@@ -166,6 +166,10 @@ func TestCheckArgs(t *testing.T) {
 	status, err = checkArgs(event)
 	assert.Error(t, err)
 	assert.Equal(t, 2, status)
+	plugin.MatchExpr = "test"
+	status, err = checkArgs(event)
+	assert.Error(t, err)
+	assert.Equal(t, 2, status)
 	plugin.LogFile = "test.log"
 	status, err = checkArgs(event)
 	assert.Error(t, err)
