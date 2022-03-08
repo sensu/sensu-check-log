@@ -11,13 +11,14 @@ import (
 const bufSize = 1000
 
 type Analyzer struct {
-	Procs     int
-	Path      string
-	Log       io.Reader
-	Func      AnalyzerFunc
-	Offset    int64
-	wg        sync.WaitGroup
-	bytesRead int64
+	Procs          int
+	Path           string
+	Log            io.Reader
+	Func           AnalyzerFunc
+	Offset         int64
+	wg             sync.WaitGroup
+	bytesRead      int64
+	VerboseResults bool
 }
 
 type discardInterface interface {
@@ -51,7 +52,7 @@ type AnalyzerFunc func([]byte) *Result
 
 type Result struct {
 	Path    string `json:"path"`
-	Match   string `json:"match"`
+	Match   string `json:"match,omitempty"`
 	Err     error  `json:"error,omitempty"`
 	Inverse bool   `json:"inverse,omitempty"`
 	Offset  int64  `json:"offset"`
@@ -135,6 +136,10 @@ func (a *Analyzer) consumer(ctx context.Context, producer <-chan LineMsg, result
 			if result != nil {
 				result.Path = a.Path
 				result.Offset = msg.Offset
+				if !a.VerboseResults {
+					result.Match = ""
+					result.Inverse = false
+				}
 				select {
 				case results <- *result:
 				case <-ctx.Done():

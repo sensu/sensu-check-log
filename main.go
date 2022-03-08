@@ -41,6 +41,7 @@ type Config struct {
 	CriticalThreshold int
 	CriticalOnly      bool
 	CheckNameTemplate string
+	VerboseResults    bool
 }
 
 var (
@@ -231,6 +232,14 @@ var (
 			Default:   false,
 			Usage:     "Suppress generation of events and report intended actions instead. (implies verbose)",
 			Value:     &plugin.DryRun,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "output-matching-string",
+			Argument:  "output-matching-string",
+			Shorthand: "",
+			Default:   false,
+			Usage:     "Include matching string in output",
+			Value:     &plugin.VerboseResults,
 		},
 	}
 )
@@ -506,11 +515,12 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	}
 
 	analyzer := Analyzer{
-		Path:   file,
-		Procs:  plugin.Procs,
-		Log:    reader,
-		Offset: offset,
-		Func:   AnalyzeRegexp(plugin.MatchExpr),
+		Path:           file,
+		Procs:          plugin.Procs,
+		Log:            reader,
+		Offset:         offset,
+		Func:           AnalyzeRegexp(plugin.MatchExpr),
+		VerboseResults: plugin.VerboseResults,
 	}
 
 	status := sensu.CheckStateOK
