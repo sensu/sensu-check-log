@@ -593,12 +593,15 @@ func executeCheck(event *corev2.Event) (int, error) {
 		return sensu.CheckStateCritical, e
 	}
 	fileErrors := []error{}
-
+	matchingFiles := make(map[string]int)
 	eventBuf := new(bytes.Buffer)
 	enc := json.NewEncoder(eventBuf)
 
 	for _, file := range logs {
 		numMatches, err := processLogFile(file, enc)
+		if numMatches > 0 {
+			matchingFiles[file] = numMatches
+		}
 		if err != nil {
 			fileErrors = append(fileErrors, err)
 			status = sensu.CheckStateOK
@@ -617,7 +620,13 @@ func executeCheck(event *corev2.Event) (int, error) {
 	if status != sensu.CheckStateOK {
 		//if event generation disabled just output the results as this check's output
 		if plugin.DisableEvent {
-			fmt.Printf("%s\n", eventBuf.String())
+			if plugin.VerboseResults {
+				fmt.Printf("%s\n", eventBuf.String())
+			} else {
+				for f, n := range matchingFiles {
+					fmt.Printf("File %s has %d matching lines\n", f, n)
+				}
+			}
 			return status, nil
 		}
 
