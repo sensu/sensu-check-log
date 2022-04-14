@@ -624,7 +624,11 @@ func executeCheck(event *corev2.Event) (int, error) {
 				fmt.Printf("%s\n", eventBuf.String())
 			} else {
 				for f, n := range matchingFiles {
-					fmt.Printf("File %s has %d matching lines\n", f, n)
+					if plugin.InverseMatch {
+						fmt.Printf("File %s has %d inverse matching lines\n", f, n)
+					} else {
+						fmt.Printf("File %s has %d matching lines\n", f, n)
+					}
 				}
 			}
 			return status, nil
