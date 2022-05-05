@@ -39,7 +39,7 @@ func clearPlugin() {
 	plugin.StateDir = ""
 	plugin.DryRun = false
 	plugin.IgnoreInitialRun = false
-	plugin.InverseMatch = false
+	plugin.InvertThresholds = false
 	plugin.WarningOnly = false
 	plugin.CriticalOnly = false
 	plugin.WarningThreshold = 0
@@ -75,6 +75,34 @@ func TestSettStatusWithCurrentStatusZero(t *testing.T) {
 	plugin.CriticalOnly = true
 	plugin.WarningOnly = false
 	numMatches = 5
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 0, status)
+}
+func TestSettStatusWithCurrentStatusZeroAndInvertThresholds(t *testing.T) {
+	clearPlugin()
+	s := 0
+	numMatches := 10
+	status := setStatus(s, numMatches)
+	assert.Equal(t, 0, status)
+	plugin.InvertThresholds = true
+	plugin.WarningThreshold = 20
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 1, status)
+	plugin.WarningThreshold = 5
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 0, status)
+	plugin.WarningThreshold = 20
+	plugin.CriticalThreshold = 15
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 2, status)
+	plugin.WarningOnly = true
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 1, status)
+	plugin.CriticalOnly = true
+	plugin.WarningOnly = false
+	status = setStatus(s, numMatches)
+	assert.Equal(t, 2, status)
+	numMatches = 30
 	status = setStatus(s, numMatches)
 	assert.Equal(t, 0, status)
 }
@@ -494,15 +522,6 @@ func TestProcessLogFile(t *testing.T) {
 	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, matches)
-	plugin.InverseMatch = true
-	plugin.EnableStateReset = false
-	matches, err = processLogFile(logs[0], enc)
-	assert.Error(t, err)
-	assert.Equal(t, 0, matches)
-	plugin.EnableStateReset = true
-	matches, err = processLogFile(logs[0], enc)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, matches)
 
 	// Do not run error condition tests that require chmod on windows, they will fail
 	if runtime.GOOS != "windows" {

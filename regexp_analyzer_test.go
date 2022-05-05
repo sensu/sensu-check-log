@@ -6,7 +6,6 @@ import (
 )
 
 func TestRegexpAnalyzer(t *testing.T) {
-	plugin.InverseMatch = false
 	tests := []struct {
 		Pattern    string
 		LogLines   [][]byte

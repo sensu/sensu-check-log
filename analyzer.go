@@ -54,7 +54,6 @@ type Result struct {
 	Path    string `json:"path"`
 	Match   string `json:"match,omitempty"`
 	Err     error  `json:"error,omitempty"`
-	Inverse bool   `json:"inverse,omitempty"`
 	Offset  int64  `json:"offset"`
 }
 
@@ -138,7 +137,6 @@ func (a *Analyzer) consumer(ctx context.Context, producer <-chan LineMsg, result
 				result.Offset = msg.Offset
 				if !a.VerboseResults {
 					result.Match = ""
-					result.Inverse = false
 				}
 				select {
 				case results <- *result:
