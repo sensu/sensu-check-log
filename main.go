@@ -41,6 +41,7 @@ type Config struct {
 	CriticalThreshold int
 	CriticalOnly      bool
 	CheckNameTemplate string
+	VerboseResults    bool
 }
 
 var (
@@ -231,6 +232,14 @@ var (
 			Default:   false,
 			Usage:     "Suppress generation of events and report intended actions instead. (implies verbose)",
 			Value:     &plugin.DryRun,
+		},
+		&sensu.PluginConfigOption{
+			Path:      "output-matching-string",
+			Argument:  "output-matching-string",
+			Shorthand: "",
+			Default:   false,
+			Usage:     "Include matching string in output",
+			Value:     &plugin.VerboseResults,
 		},
 	}
 )
@@ -506,11 +515,12 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	}
 
 	analyzer := Analyzer{
-		Path:   file,
-		Procs:  plugin.Procs,
-		Log:    reader,
-		Offset: offset,
-		Func:   AnalyzeRegexp(plugin.MatchExpr),
+		Path:           file,
+		Procs:          plugin.Procs,
+		Log:            reader,
+		Offset:         offset,
+		Func:           AnalyzeRegexp(plugin.MatchExpr),
+		VerboseResults: plugin.VerboseResults,
 	}
 
 	status := sensu.CheckStateOK
@@ -583,12 +593,15 @@ func executeCheck(event *corev2.Event) (int, error) {
 		return sensu.CheckStateCritical, e
 	}
 	fileErrors := []error{}
-
+	matchingFiles := make(map[string]int)
 	eventBuf := new(bytes.Buffer)
 	enc := json.NewEncoder(eventBuf)
 
 	for _, file := range logs {
 		numMatches, err := processLogFile(file, enc)
+		if numMatches > 0 {
+			matchingFiles[file] = numMatches
+		}
 		if err != nil {
 			fileErrors = append(fileErrors, err)
 			status = sensu.CheckStateOK
@@ -607,7 +620,17 @@ func executeCheck(event *corev2.Event) (int, error) {
 	if status != sensu.CheckStateOK {
 		//if event generation disabled just output the results as this check's output
 		if plugin.DisableEvent {
-			fmt.Printf("%s\n", eventBuf.String())
+			if plugin.VerboseResults {
+				fmt.Printf("%s\n", eventBuf.String())
+			} else {
+				for f, n := range matchingFiles {
+					if plugin.InverseMatch {
+						fmt.Printf("File %s has %d inverse matching lines\n", f, n)
+					} else {
+						fmt.Printf("File %s has %d matching lines\n", f, n)
+					}
+				}
+			}
 			return status, nil
 		}
 
