@@ -175,7 +175,7 @@ var (
 		},
 		&sensu.PluginConfigOption{
 			Path:      "missing-ok",
-			Env:       "CHECK_LOG_MISING_OK",
+			Env:       "CHECK_LOG_MISSING_OK",
 			Argument:  "missing-ok",
 			Shorthand: "M",
 			Default:   false,
