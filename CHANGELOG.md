@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2022-05-05
+
+### Changed
+* Default output now one line per file with number of matching lines found.
+* Removed 'inverse-match' commandline option 
+ 
+
+### Added
+* New cmdline option to force reading from start of file.
+* Introduced `output-matching-string` cmdline argument to enable detailed matching line output
+* New instroduced `invert-thresholds` cmdline option to convert warning and critical as maximum values under which to alert.
+
+### Fixed
+* fix for env_var support for 'missing-ok' option
+
 ## [0.5.0] - 2021-11-01
 
 ### Added
