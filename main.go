@@ -311,6 +311,9 @@ func checkArgs(event *corev2.Event) (int, error) {
 	if plugin.StateDir == "" {
 		return sensu.CheckStateCritical, fmt.Errorf("--state-directory not specified")
 	}
+	if plugin.MatchExpr == "" {
+		return sensu.CheckStateCritical, fmt.Errorf("--match-expr not specified")
+	}
 	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(plugin.StateDir, os.ModePerm)
 		if err != nil {
@@ -489,10 +492,10 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		return 0, fmt.Errorf("error file %s: cached offset is less than 0, possibly corrupt state file: %s", file, stateFile)
 	}
 	if offset > info.Size() {
-		offset = 0
 		if plugin.Verbose {
-			fmt.Printf("Resetting offset to zero, because cached offset is beyond end of file, indicating file has been rotated, truncated or replaced\n")
+			fmt.Printf("Resetting offset to zero, because cached offset (%v bytes) is beyond end of file (%v bytes), indicating file has been rotated, truncated or replaced\n", offset, info.Size())
 		}
+		offset = 0
 	}
 
 	if offset > 0 {
