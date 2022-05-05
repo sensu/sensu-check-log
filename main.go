@@ -21,27 +21,28 @@ import (
 // Config represents the check plugin config.
 type Config struct {
 	sensu.PluginConfig
-	LogFile           string
-	LogFileExpr       string
-	LogPath           string
-	StateDir          string
-	Procs             int
-	MatchExpr         string
-	InverseMatch      bool
-	MaxBytes          int64
-	EventsAPI         string
-	IgnoreInitialRun  bool
-	DisableEvent      bool
-	DryRun            bool
-	Verbose           bool
-	EnableStateReset  bool
-	MissingOK         bool
-	WarningThreshold  int
-	WarningOnly       bool
-	CriticalThreshold int
-	CriticalOnly      bool
-	CheckNameTemplate string
-	VerboseResults    bool
+	LogFile            string
+	LogFileExpr        string
+	LogPath            string
+	StateDir           string
+	Procs              int
+	MatchExpr          string
+	InvertThresholds   bool
+	MaxBytes           int64
+	EventsAPI          string
+	IgnoreInitialRun   bool
+	DisableEvent       bool
+	DryRun             bool
+	Verbose            bool
+	EnableStateReset   bool
+	MissingOK          bool
+	ForceReadFromStart bool
+	WarningThreshold   int
+	WarningOnly        bool
+	CriticalThreshold  int
+	CriticalOnly       bool
+	CheckNameTemplate  string
+	VerboseResults     bool
 }
 
 var (
@@ -174,7 +175,7 @@ var (
 		},
 		&sensu.PluginConfigOption{
 			Path:      "missing-ok",
-			Env:       "CHECK_LOG_MISING_OK",
+			Env:       "CHECK_LOG_MISSING_OK",
 			Argument:  "missing-ok",
 			Shorthand: "M",
 			Default:   false,
@@ -209,13 +210,13 @@ var (
 			Value:     &plugin.EnableStateReset,
 		},
 		&sensu.PluginConfigOption{
-			Path:      "inverse-match",
-			Env:       "CHECK_LOG_INVERSE_MATCH",
-			Argument:  "inverse-match",
+			Path:      "invert-thresholds",
+			Env:       "CHECK_LOG_INVERT_THRESHOLDS",
+			Argument:  "invert-thesholds",
 			Shorthand: "i",
 			Default:   false,
-			Usage:     "Inverse match, only generate alert event if no lines match.",
-			Value:     &plugin.InverseMatch,
+			Usage:     "Invert warning and critical threshold values, making them minimum values to alert on",
+			Value:     &plugin.InvertThresholds,
 		},
 		&sensu.PluginConfigOption{
 			Path:      "verbose",
@@ -238,17 +239,23 @@ var (
 			Argument:  "output-matching-string",
 			Shorthand: "",
 			Default:   false,
-			Usage:     "Include matching string in output",
+			Usage:     "Include detailed information about each matching line in output.",
 			Value:     &plugin.VerboseResults,
+		},
+		&sensu.PluginConfigOption{
+			Path:     "force-read-from-start",
+			Argument: "force-read-from-start",
+			Default:  false,
+			Usage:    "Ignore cached file offset in state directory and read file(s) from beginning.",
+			Value:    &plugin.ForceReadFromStart,
 		},
 	}
 )
 
 // State represents the state file offset
 type State struct {
-	Offset       int64
-	MatchExpr    string
-	InverseMatch bool
+	Offset    int64
+	MatchExpr string
 }
 
 func getState(path string) (state State, err error) {
@@ -296,8 +303,14 @@ func checkArgs(event *corev2.Event) (int, error) {
 	if plugin.WarningOnly && plugin.CriticalOnly {
 		return sensu.CheckStateCritical, fmt.Errorf("--warning-only and --critical-only options conflict, cannot use both")
 	}
-	if plugin.WarningThreshold >= plugin.CriticalThreshold {
-		return sensu.CheckStateCritical, fmt.Errorf("--warning-threshold must be less than --critical-threshold")
+	if plugin.InvertThresholds {
+		if plugin.WarningThreshold <= plugin.CriticalThreshold {
+			return sensu.CheckStateCritical, fmt.Errorf("--warning-threshold must be greater than or equal to --critical-threshold when --invert-thresholds is in use")
+		}
+	} else {
+		if plugin.WarningThreshold >= plugin.CriticalThreshold {
+			return sensu.CheckStateCritical, fmt.Errorf("--warning-threshold must be less than or equal to --critical-threshold")
+		}
 	}
 	if event == nil && !plugin.DisableEvent {
 		return sensu.CheckStateCritical, fmt.Errorf("--disable-event-generation not selected but event missing from stdin")
@@ -452,12 +465,8 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		return 0, fmt.Errorf("error couldn't get state for log file %s: %s", file, err)
 
 	}
-	// Do we need to reset the state because the requested MatchExpr or InverseMatch is different?
 	resetState := false
 	if state.MatchExpr != "" && state.MatchExpr != plugin.MatchExpr {
-		resetState = true
-	}
-	if state.MatchExpr != "" && state.InverseMatch != plugin.InverseMatch {
 		resetState = true
 	}
 	if resetState {
@@ -467,7 +476,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 				fmt.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use\n", file)
 			}
 		} else {
-			return 0, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: %s Inverse: %v. Either use --reset-state option, or manually delete state file %s", file, state.MatchExpr, state.InverseMatch, stateFile)
+			return 0, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: '%s'. Either use --reset-state option, or manually delete state file '%s'", file, state.MatchExpr, stateFile)
 		}
 	}
 
@@ -486,6 +495,9 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	}
 
 	offset := state.Offset
+	if plugin.ForceReadFromStart {
+		offset = 0
+	}
 	// Are we looking at freshly rotated file since last time we run?
 	// If so let's reset the offset back to 0 and read the file again
 	if offset < 0 {
@@ -558,12 +570,20 @@ func setStatus(currentStatus int, numMatches int) int {
 	status := sensu.CheckStateOK
 	warn := false
 	critical := false
-
-	if plugin.WarningThreshold > 0 && numMatches >= plugin.WarningThreshold {
-		warn = true
-	}
-	if plugin.CriticalThreshold > 0 && numMatches >= plugin.CriticalThreshold {
-		critical = true
+	if plugin.InvertThresholds {
+		if plugin.WarningThreshold > 0 && numMatches <= plugin.WarningThreshold {
+			warn = true
+		}
+		if plugin.CriticalThreshold > 0 && numMatches <= plugin.CriticalThreshold {
+			critical = true
+		}
+	} else {
+		if plugin.WarningThreshold > 0 && numMatches >= plugin.WarningThreshold {
+			warn = true
+		}
+		if plugin.CriticalThreshold > 0 && numMatches >= plugin.CriticalThreshold {
+			critical = true
+		}
 	}
 
 	if plugin.WarningOnly || plugin.CriticalOnly {
@@ -627,11 +647,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 				fmt.Printf("%s\n", eventBuf.String())
 			} else {
 				for f, n := range matchingFiles {
-					if plugin.InverseMatch {
-						fmt.Printf("File %s has %d inverse matching lines\n", f, n)
-					} else {
-						fmt.Printf("File %s has %d matching lines\n", f, n)
-					}
+					fmt.Printf("File %s has %d matching lines\n", f, n)
 				}
 			}
 			return status, nil
