@@ -622,7 +622,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 
 	for _, file := range logs {
 		numMatches, err := processLogFile(file, enc)
-		if numMatches > 0 {
+		if numMatches >= 0 {
 			matchingFiles[file] = numMatches
 		}
 		if err != nil {
@@ -641,15 +641,18 @@ func executeCheck(event *corev2.Event) (int, error) {
 	}
 	// sendEvent or report to stdout
 	if status != sensu.CheckStateOK {
+		//use summary output unless VerboseResults is true
+		output := ""
+		if plugin.VerboseResults {
+			output = fmt.Sprintf("%s\n", eventBuf.String())
+		} else {
+			for f, n := range matchingFiles {
+				output = output + fmt.Sprintf("File %s has %d matching lines\n", f, n)
+			}
+		}
 		//if event generation disabled just output the results as this check's output
 		if plugin.DisableEvent {
-			if plugin.VerboseResults {
-				fmt.Printf("%s\n", eventBuf.String())
-			} else {
-				for f, n := range matchingFiles {
-					fmt.Printf("File %s has %d matching lines\n", f, n)
-				}
-			}
+			fmt.Printf("%s", output)
 			return status, nil
 		}
 
@@ -662,7 +665,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 			fmt.Printf("Error: Event API url not defined. Event generation aborted\n")
 			return sensu.CheckStateWarning, nil
 		}
-		outputEvent, err := createEvent(event, status, plugin.CheckNameTemplate, eventBuf.String())
+		outputEvent, err := createEvent(event, status, plugin.CheckNameTemplate, output)
 		if err != nil {
 			fmt.Printf("Error creating event: %s\n", err)
 			return sensu.CheckStateWarning, nil

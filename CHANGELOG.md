@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+* Use summary output by default in generated events
+* Include files with zero matching lines in summary output
 * typo in long argument for invert-thresholds
 
 ## [0.6.0] - 2022-05-05
