@@ -212,7 +212,7 @@ var (
 		&sensu.PluginConfigOption{
 			Path:      "invert-thresholds",
 			Env:       "CHECK_LOG_INVERT_THRESHOLDS",
-			Argument:  "invert-thesholds",
+			Argument:  "invert-thresholds",
 			Shorthand: "i",
 			Default:   false,
 			Usage:     "Invert warning and critical threshold values, making them minimum values to alert on",
