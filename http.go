@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	corev2 "github.com/sensu/sensu-go/api/core/v2"
+	corev2 "github.com/sensu/core/v2"
 )
 
 func sendEvent(path string, outputEvent *corev2.Event) error {

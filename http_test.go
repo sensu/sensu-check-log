@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	sensu "github.com/sensu/sensu-go/api/core/v2"
+	sensu "github.com/sensu/core/v2"
 )
 
 type testHandler struct {

@@ -13,14 +13,13 @@ import (
 	"strings"
 	"testing"
 
-	corev2 "github.com/sensu/sensu-go/api/core/v2"
-	sensu "github.com/sensu/sensu-go/api/core/v2"
+	corev2 "github.com/sensu/core/v2"
 	"github.com/stretchr/testify/assert"
 )
 
 type apiHandler struct {
 	t     *testing.T
-	event *sensu.Event
+	event *corev2.Event
 }
 
 func (h apiHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
