@@ -1,0 +1,23 @@
+name: static-check
+
+on:
+  pull_request:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+
+jobs:
+  staticcheck:
+    name: staticcheck (project)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - uses: dominikh/staticcheck-action@v1.0.0
+        with:
+          version: "2021.1.1"
+env:
+  GO_VERSION: 1.21.5
