@@ -46,8 +46,7 @@ type Config struct {
 }
 
 var (
-	defaultNameTemplate = "{{ .Check.Name }}-alert"
-	plugin              = Config{
+	plugin = Config{
 		PluginConfig: sensu.PluginConfig{
 			Name:     "sensu-check-log",
 			Short:    "Check Log",
@@ -300,7 +299,7 @@ func checkArgs(event *corev2.Event) (int, error) {
 		return sensu.CheckStateCritical, fmt.Errorf("--disable-event-generation not selected but event missing from stdin")
 	}
 	if plugin.LogFileExpr == "" && plugin.LogFile == "" {
-		return sensu.CheckStateCritical, fmt.Errorf("At least one of --log-file or --log-file-expr must be specified")
+		return sensu.CheckStateCritical, fmt.Errorf("at least one of --log-file or --log-file-expr must be specified")
 	}
 	if plugin.LogFileExpr != "" && plugin.LogPath == "" {
 		return sensu.CheckStateCritical, fmt.Errorf("--log-path must be specified if --log-file-expr is used")
@@ -314,11 +313,11 @@ func checkArgs(event *corev2.Event) (int, error) {
 	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(plugin.StateDir, os.ModePerm)
 		if err != nil {
-			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created.", plugin.StateDir)
+			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created", plugin.StateDir)
 		}
 	}
 	if _, err := os.Stat(plugin.StateDir); err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("Unexpected error accessing --state-directory %s: %s", plugin.StateDir, err)
+		return sensu.CheckStateCritical, fmt.Errorf("unexpected error accessing --state-directory %s: %s", plugin.StateDir, err)
 	}
 	if plugin.DryRun {
 		plugin.Verbose = true
@@ -379,7 +378,7 @@ func buildLogArray() ([]string, error) {
 		if filepath.IsAbs(absPath) {
 			logs = append(logs, absPath)
 		} else {
-			return nil, fmt.Errorf("Path %s not absolute", absPath)
+			return nil, fmt.Errorf("path %s not absolute", absPath)
 		}
 
 	}
@@ -401,7 +400,7 @@ func buildLogArray() ([]string, error) {
 							logs = append(logs, path)
 						}
 					} else {
-						return fmt.Errorf("Path %s not absolute", path)
+						return fmt.Errorf("path %s not absolute", path)
 					}
 				}
 				return nil
@@ -457,10 +456,10 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		if plugin.EnableStateReset {
 			state = State{}
 			if plugin.Verbose {
-				fmt.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use\n", file)
+				fmt.Printf("info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use\n", file)
 			}
 		} else {
-			return 0, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: '%s'. Either use --reset-state option, or manually delete state file '%s'", file, state.MatchExpr, stateFile)
+			return 0, fmt.Errorf("error: state file for %s has unexpected cached matching condition:: Expr: '%s'. Either use --reset-state option, or manually delete state file '%s'", file, state.MatchExpr, stateFile)
 		}
 	}
 
@@ -545,7 +544,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	}
 
 	if err := setState(state, stateFile); err != nil {
-		return 0, fmt.Errorf("Error setting state: %s", err)
+		return 0, fmt.Errorf("error setting state: %s", err)
 	}
 	return numResults, nil
 }

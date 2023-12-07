@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"io"
-	"io/ioutil"
 	"sync"
 	"sync/atomic"
 )
@@ -45,7 +44,7 @@ func (d *DiscardWriter) ReadFrom(r io.Reader) (int64, error) {
 }
 
 func NewDiscardWriter() *DiscardWriter {
-	discard := ioutil.Discard.(discardInterface)
+	discard := io.Discard.(discardInterface)
 	return &DiscardWriter{discardWriter: discard}
 }
 

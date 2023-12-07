@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	corev2 "github.com/sensu/core/v2"
@@ -27,7 +26,7 @@ func sendEvent(path string, outputEvent *corev2.Event) error {
 	}()
 
 	if status := resp.StatusCode; status >= 400 {
-		b, _ := ioutil.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("error writing event: status %d: %s", status, string(b))
 	}
 
