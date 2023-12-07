@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"sync"
+	"sync/atomic"
 )
 
 const bufSize = 1000
@@ -51,10 +52,10 @@ func NewDiscardWriter() *DiscardWriter {
 type AnalyzerFunc func([]byte) *Result
 
 type Result struct {
-	Path    string `json:"path"`
-	Match   string `json:"match,omitempty"`
-	Err     error  `json:"error,omitempty"`
-	Offset  int64  `json:"offset"`
+	Path   string `json:"path"`
+	Match  string `json:"match,omitempty"`
+	Err    error  `json:"error,omitempty"`
+	Offset int64  `json:"offset"`
 }
 
 type LineMsg struct {
@@ -77,46 +78,37 @@ func (a *Analyzer) Go(ctx context.Context) <-chan Result {
 }
 
 func (a *Analyzer) BytesRead() int64 {
-	a.wg.Wait()
-	return a.bytesRead
+	return atomic.LoadInt64(&a.bytesRead)
 }
 
 func (a *Analyzer) startProducer(ctx context.Context) <-chan LineMsg {
 	logLines := make(chan LineMsg, bufSize)
 	currentOffset := a.Offset
 	reader := bufio.NewReaderSize(a.Log, 32*1024*1024)
-	discard := NewDiscardWriter()
-	teeReader := io.TeeReader(reader, discard)
-	scanner := bufio.NewScanner(teeReader)
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 1024*1024)
-	var wg sync.WaitGroup
-	wg.Add(1)
 	a.wg.Add(1)
 	go func() {
-		defer wg.Done()
-		for scanner.Scan() {
-			line := scanner.Bytes()
-			// Copy the line, since the scanner can reclaim it
-			lineCopy := make([]byte, len(line))
-			copy(lineCopy, line)
-			select {
-			case <-ctx.Done():
-				close(logLines)
+		defer a.wg.Done()
+		defer close(logLines)
+		for {
+			line, err := reader.ReadBytes('\n')
+			if err != nil && err != io.EOF {
+				fatal("error while scanning log: %s: %s\n", a.Path, err)
+			}
+			atomic.AddInt64(&a.bytesRead, int64(len(line)))
+			if len(line) > 0 {
+				select {
+				case <-ctx.Done():
+					return
+				case logLines <- LineMsg{Line: line, Offset: currentOffset}:
+					currentOffset += int64(len(line))
+				}
+				if err == io.EOF {
+					return
+				}
+			} else {
 				return
-			case logLines <- LineMsg{Line: lineCopy, Offset: currentOffset}:
-				currentOffset += int64(len(line))
 			}
 		}
-		if err := scanner.Err(); err != nil {
-			fatal("error while scanning log: %s :: %s\n", a.Path, err)
-		}
-		close(logLines)
-	}()
-	go func() {
-		defer a.wg.Done()
-		wg.Wait()
-		a.bytesRead = discard.BytesRead
 	}()
 	return logLines
 }
