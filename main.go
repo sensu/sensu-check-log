@@ -14,7 +14,7 @@ import (
 	"runtime"
 	"strings"
 
-	corev2 "github.com/sensu/sensu-go/api/core/v2"
+	corev2 "github.com/sensu/core/v2"
 	"github.com/sensu/sensu-plugin-sdk/sensu"
 )
 
@@ -46,8 +46,7 @@ type Config struct {
 }
 
 var (
-	defaultNameTemplate = "{{ .Check.Name }}-alert"
-	plugin              = Config{
+	plugin = Config{
 		PluginConfig: sensu.PluginConfig{
 			Name:     "sensu-check-log",
 			Short:    "Check Log",
@@ -55,26 +54,24 @@ var (
 		},
 	}
 
-	options = []*sensu.PluginConfigOption{
-		&sensu.PluginConfigOption{
+	options = []sensu.ConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      "log-file",
 			Env:       "CHECK_LOG_FILE",
 			Argument:  "log-file",
 			Shorthand: "f",
-			Default:   "",
 			Usage:     "Log file to check. (Required if --log-file-expr not used)",
 			Value:     &plugin.LogFile,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      "log-file-expr",
 			Env:       "CHECK_LOG_FILE_EXPR",
 			Argument:  "log-file-expr",
 			Shorthand: "e",
-			Default:   "",
 			Usage:     "Log file regexp to check. (Required if --log-file not used)",
 			Value:     &plugin.LogFileExpr,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      "log-path",
 			Env:       "CHECK_LOG_PATH",
 			Argument:  "log-path",
@@ -83,16 +80,15 @@ var (
 			Usage:     "Log path for basis of log file regexp. Only finds files under this path. (Required if --log-file-expr used)",
 			Value:     &plugin.LogPath,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      "state-directory",
 			Env:       "CHECK_LOG_STATE_DIRECTORY",
 			Argument:  "state-directory",
 			Shorthand: "d",
-			Default:   "",
 			Usage:     "Directory where check will hold state for each processed log file. Note: checks using different match expressions should use different state directories to avoid conflict. (Required)",
 			Value:     &plugin.StateDir,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[int]{
 			Path:      "analyzer-procs",
 			Env:       "CHECK_LOG_ANALYZER_PROCS",
 			Argument:  "analyzer-procs",
@@ -101,16 +97,15 @@ var (
 			Usage:     "Number of parallel analyzer processes per file.",
 			Value:     &plugin.Procs,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      "match-expr",
 			Env:       "CHECK_LOG_MATCH_EXPR",
 			Argument:  "match-expr",
 			Shorthand: "m",
-			Default:   "",
 			Usage:     "RE2 regexp matcher expression. (required)",
 			Value:     &plugin.MatchExpr,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[int]{
 			Path:      "warning-threshold",
 			Env:       "CHECK_LOG_WARNING_THRESHOLD",
 			Argument:  "warning-threshold",
@@ -119,16 +114,15 @@ var (
 			Usage:     "Minimum match count that results in an warning",
 			Value:     &plugin.WarningThreshold,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "warning-only",
 			Env:       "CHECK_LOG_WARNING_ONLY",
 			Argument:  "warning-only",
 			Shorthand: "W",
-			Default:   false,
 			Usage:     "Only issue warning status if matches are found",
 			Value:     &plugin.WarningOnly,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[int]{
 			Path:      "critical-threshold",
 			Env:       "CHECK_LOG_CRITICAL_THRESHOLD",
 			Argument:  "critical-threshold",
@@ -137,7 +131,7 @@ var (
 			Usage:     "Minimum match count that results in an warning",
 			Value:     &plugin.CriticalThreshold,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "critical-only",
 			Env:       "CHECK_LOG_CRITICAL_ONLY",
 			Argument:  "critical-only",
@@ -146,16 +140,15 @@ var (
 			Usage:     "Only issue critical status if matches are found",
 			Value:     &plugin.CriticalOnly,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[int64]{
 			Path:      "max-bytes",
 			Env:       "CHECK_LOG_MAX_BYTES",
 			Argument:  "max-bytes",
 			Shorthand: "b",
-			Default:   int64(0),
 			Usage:     "Max number of bytes to read (0 means unlimited).",
 			Value:     &plugin.MaxBytes,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      "events-api-url",
 			Env:       "CHECK_LOG_EVENTS_API_URL",
 			Argument:  "events-api-url",
@@ -164,88 +157,78 @@ var (
 			Usage:     "Agent Events API URL.",
 			Value:     &plugin.EventsAPI,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "ignore-initial-run",
 			Env:       "CHECK_LOG_IGNORE_INITIAL_RUN",
 			Argument:  "ignore-initial-run",
 			Shorthand: "I",
-			Default:   false,
 			Usage:     "Suppresses alerts for any matches found on the first run of the plugin.",
 			Value:     &plugin.IgnoreInitialRun,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "missing-ok",
 			Env:       "CHECK_LOG_MISSING_OK",
 			Argument:  "missing-ok",
 			Shorthand: "M",
-			Default:   false,
 			Usage:     "Suppresses error if selected log files are missing",
 			Value:     &plugin.MissingOK,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      "check-name-tamplate",
 			Env:       "CHECK_LOG_CHECK_NAME_TEMPLATE",
 			Argument:  "check-name-template",
 			Shorthand: "t",
-			Default:   defaultNameTemplate,
 			Usage:     "Check name to use in generated events",
 			Value:     &plugin.CheckNameTemplate,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "disable-event-generation",
 			Env:       "CHECK_LOG_CHECK_DISABLE_EVENT_GENERATION",
 			Argument:  "disable-event-generation",
 			Shorthand: "D",
-			Default:   false,
 			Usage:     "Disable event generation, send results to stdout instead.",
 			Value:     &plugin.DisableEvent,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "reset-state",
 			Env:       "CHECK_LOG_RESET_STATE",
 			Argument:  "reset-state",
 			Shorthand: "r",
-			Default:   false,
 			Usage:     "Allow automatic state reset if match expression changes, instead of failing.",
 			Value:     &plugin.EnableStateReset,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "invert-thresholds",
 			Env:       "CHECK_LOG_INVERT_THRESHOLDS",
 			Argument:  "invert-thresholds",
 			Shorthand: "i",
-			Default:   false,
 			Usage:     "Invert warning and critical threshold values, making them minimum values to alert on",
 			Value:     &plugin.InvertThresholds,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "verbose",
 			Argument:  "verbose",
 			Shorthand: "v",
-			Default:   false,
 			Usage:     "Verbose output, useful for testing.",
 			Value:     &plugin.Verbose,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "dry-run",
 			Argument:  "dry-run",
 			Shorthand: "n",
-			Default:   false,
 			Usage:     "Suppress generation of events and report intended actions instead. (implies verbose)",
 			Value:     &plugin.DryRun,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "output-matching-string",
 			Argument:  "output-matching-string",
 			Shorthand: "",
-			Default:   false,
 			Usage:     "Include detailed information about each matching line in output.",
 			Value:     &plugin.VerboseResults,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:     "force-read-from-start",
 			Argument: "force-read-from-start",
-			Default:  false,
 			Usage:    "Ignore cached file offset in state directory and read file(s) from beginning.",
 			Value:    &plugin.ForceReadFromStart,
 		},
@@ -316,7 +299,7 @@ func checkArgs(event *corev2.Event) (int, error) {
 		return sensu.CheckStateCritical, fmt.Errorf("--disable-event-generation not selected but event missing from stdin")
 	}
 	if plugin.LogFileExpr == "" && plugin.LogFile == "" {
-		return sensu.CheckStateCritical, fmt.Errorf("At least one of --log-file or --log-file-expr must be specified")
+		return sensu.CheckStateCritical, fmt.Errorf("at least one of --log-file or --log-file-expr must be specified")
 	}
 	if plugin.LogFileExpr != "" && plugin.LogPath == "" {
 		return sensu.CheckStateCritical, fmt.Errorf("--log-path must be specified if --log-file-expr is used")
@@ -330,11 +313,11 @@ func checkArgs(event *corev2.Event) (int, error) {
 	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(plugin.StateDir, os.ModePerm)
 		if err != nil {
-			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created.", plugin.StateDir)
+			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created", plugin.StateDir)
 		}
 	}
 	if _, err := os.Stat(plugin.StateDir); err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("Unexpected error accessing --state-directory %s: %s", plugin.StateDir, err)
+		return sensu.CheckStateCritical, fmt.Errorf("unexpected error accessing --state-directory %s: %s", plugin.StateDir, err)
 	}
 	if plugin.DryRun {
 		plugin.Verbose = true
@@ -395,7 +378,7 @@ func buildLogArray() ([]string, error) {
 		if filepath.IsAbs(absPath) {
 			logs = append(logs, absPath)
 		} else {
-			return nil, fmt.Errorf("Path %s not absolute", absPath)
+			return nil, fmt.Errorf("path %s not absolute", absPath)
 		}
 
 	}
@@ -417,7 +400,7 @@ func buildLogArray() ([]string, error) {
 							logs = append(logs, path)
 						}
 					} else {
-						return fmt.Errorf("Path %s not absolute", path)
+						return fmt.Errorf("path %s not absolute", path)
 					}
 				}
 				return nil
@@ -473,10 +456,10 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 		if plugin.EnableStateReset {
 			state = State{}
 			if plugin.Verbose {
-				fmt.Printf("Info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use\n", file)
+				fmt.Printf("info: resetting state file %s because unexpected cached matching condition detected and --reset-state in use\n", file)
 			}
 		} else {
-			return 0, fmt.Errorf("Error: state file for %s has unexpected cached matching condition:: Expr: '%s'. Either use --reset-state option, or manually delete state file '%s'", file, state.MatchExpr, stateFile)
+			return 0, fmt.Errorf("error: state file for %s has unexpected cached matching condition:: Expr: '%s'. Either use --reset-state option, or manually delete state file '%s'", file, state.MatchExpr, stateFile)
 		}
 	}
 
@@ -561,7 +544,7 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	}
 
 	if err := setState(state, stateFile); err != nil {
-		return 0, fmt.Errorf("Error setting state: %s", err)
+		return 0, fmt.Errorf("error setting state: %s", err)
 	}
 	return numResults, nil
 }

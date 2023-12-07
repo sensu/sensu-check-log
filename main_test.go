@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,14 +12,13 @@ import (
 	"strings"
 	"testing"
 
-	corev2 "github.com/sensu/sensu-go/api/core/v2"
-	sensu "github.com/sensu/sensu-go/api/core/v2"
+	corev2 "github.com/sensu/core/v2"
 	"github.com/stretchr/testify/assert"
 )
 
 type apiHandler struct {
 	t     *testing.T
-	event *sensu.Event
+	event *corev2.Event
 }
 
 func (h apiHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -214,7 +212,7 @@ func TestCheckArgs(t *testing.T) {
 	status, err = checkArgs(event)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, status)
-	td, err := ioutil.TempDir("", "")
+	td, err := os.MkdirTemp("", "")
 	assert.NoError(t, err)
 	defer os.RemoveAll(td)
 	plugin.StateDir = td
@@ -238,7 +236,7 @@ func TestCheckArgs(t *testing.T) {
 }
 
 func TestState(t *testing.T) {
-	td, err := ioutil.TempDir("", "")
+	td, err := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	if err != nil {
 		t.Fatal(err)
@@ -334,7 +332,7 @@ func TestExecuteCheckWithDisableEvent(t *testing.T) {
 	plugin.MatchExpr = "test"
 	plugin.WarningThreshold = 1
 	plugin.WarningOnly = true
-	td, err := ioutil.TempDir("", "")
+	td, err := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -343,7 +341,7 @@ func TestExecuteCheckWithDisableEvent(t *testing.T) {
 	assert.Equal(t, 1, status)
 	plugin.CriticalThreshold = 1
 	plugin.CriticalOnly = true
-	ctd, err := ioutil.TempDir("", "")
+	ctd, err := os.MkdirTemp("", "")
 	defer os.RemoveAll(ctd)
 	assert.NoError(t, err)
 	plugin.StateDir = ctd
@@ -357,7 +355,7 @@ func TestExecuteCheckWithNoEvent(t *testing.T) {
 	plugin.DisableEvent = false
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.MatchExpr = "test"
-	td, err := ioutil.TempDir("", "")
+	td, err := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -372,7 +370,7 @@ func TestExecuteCheckWithNoEventAndFileError(t *testing.T) {
 	plugin.DisableEvent = false
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.MatchExpr = "test"
-	td, err := ioutil.TempDir("", "")
+	td, err := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -399,7 +397,7 @@ func TestExecuteWithEvent(t *testing.T) {
 	plugin.MatchExpr = "test"
 
 	// no events api defined error
-	td, err := ioutil.TempDir("", "")
+	td, err := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -408,7 +406,7 @@ func TestExecuteWithEvent(t *testing.T) {
 	assert.Equal(t, 1, status)
 
 	// no name template error
-	td, err = ioutil.TempDir("", "")
+	td, err = os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -419,7 +417,7 @@ func TestExecuteWithEvent(t *testing.T) {
 	assert.Equal(t, 1, status)
 
 	// 404 events api status error
-	td, err = ioutil.TempDir("", "")
+	td, err = os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -428,7 +426,7 @@ func TestExecuteWithEvent(t *testing.T) {
 	status, err = executeCheck(event)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, status)
-	td, err = ioutil.TempDir("", "")
+	td, err = os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -438,7 +436,7 @@ func TestExecuteWithEvent(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, status)
 	plugin.DryRun = true
-	td, err = ioutil.TempDir("", "")
+	td, err = os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -459,7 +457,7 @@ func TestProcessLogFile(t *testing.T) {
 	plugin.LogFile = "./testingdata/test.log"
 	plugin.MatchExpr = "test"
 
-	td, err := ioutil.TempDir("", "")
+	td, err := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -469,7 +467,7 @@ func TestProcessLogFile(t *testing.T) {
 	enc := json.NewEncoder(eventBuf)
 
 	// test for good match
-	td, err = ioutil.TempDir("", "")
+	td, err = os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -482,7 +480,7 @@ func TestProcessLogFile(t *testing.T) {
 	assert.Equal(t, 1, matches)
 
 	// test for abs log file path err
-	td, err = ioutil.TempDir("", "")
+	td, err = os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -497,7 +495,7 @@ func TestProcessLogFile(t *testing.T) {
 
 	// test for IgnoreFirstRun
 	plugin.IgnoreInitialRun = true
-	td, err = ioutil.TempDir("", "")
+	td, err = os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -507,7 +505,7 @@ func TestProcessLogFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, matches)
 	plugin.IgnoreInitialRun = false
-	td, err = ioutil.TempDir("", "")
+	td, err = os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
 	plugin.StateDir = td
@@ -548,7 +546,7 @@ func TestProcessLogFile(t *testing.T) {
 		assert.NoError(t, err)
 
 		// test for state file write error
-		td, err = ioutil.TempDir("", "")
+		td, err = os.MkdirTemp("", "")
 		defer os.RemoveAll(td)
 		assert.NoError(t, err)
 		plugin.StateDir = td
@@ -569,12 +567,12 @@ func TestProcessLogFileRotatedFileVerboseTrue(t *testing.T) {
 	plugin.DisableEvent = true
 	plugin.MatchExpr = "brown"
 
-	td, err := ioutil.TempDir("", "")
+	td, err := os.MkdirTemp("", "")
 	assert.NoError(t, err)
 	defer os.RemoveAll(td)
 	plugin.StateDir = td
 
-	logdir, err := ioutil.TempDir("", "")
+	logdir, err := os.MkdirTemp("", "")
 	assert.NoError(t, err)
 	defer os.RemoveAll(logdir)
 
@@ -585,7 +583,7 @@ func TestProcessLogFileRotatedFileVerboseTrue(t *testing.T) {
 	_, err = f.WriteString("what now brown cow\n")
 	assert.NoError(t, err)
 	f.Close()
-	_, err = ioutil.ReadFile(plugin.LogFile)
+	_, err = os.ReadFile(plugin.LogFile)
 	assert.NoError(t, err)
 
 	eventBuf := new(bytes.Buffer)
@@ -610,7 +608,7 @@ func TestProcessLogFileRotatedFileVerboseTrue(t *testing.T) {
 	_, err = f.WriteString("the brown cow\n")
 	assert.NoError(t, err)
 	f.Close()
-	_, err = ioutil.ReadFile(plugin.LogFile)
+	_, err = os.ReadFile(plugin.LogFile)
 	assert.NoError(t, err)
 	logs, err = buildLogArray()
 	assert.NoError(t, err)
@@ -625,7 +623,7 @@ func TestProcessLogFileRotatedFileVerboseTrue(t *testing.T) {
 	_, err = f.WriteString("brown cows yeah!\n")
 	assert.NoError(t, err)
 	f.Close()
-	_, err = ioutil.ReadFile(plugin.LogFile)
+	_, err = os.ReadFile(plugin.LogFile)
 	assert.NoError(t, err)
 	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
@@ -640,12 +638,12 @@ func TestProcessLogFileRotatedFileVerboseFalse(t *testing.T) {
 	plugin.DisableEvent = true
 	plugin.MatchExpr = "brown"
 
-	td, err := ioutil.TempDir("", "")
+	td, err := os.MkdirTemp("", "")
 	assert.NoError(t, err)
 	defer os.RemoveAll(td)
 	plugin.StateDir = td
 
-	logdir, err := ioutil.TempDir("", "")
+	logdir, err := os.MkdirTemp("", "")
 	assert.NoError(t, err)
 	defer os.RemoveAll(logdir)
 
@@ -656,7 +654,7 @@ func TestProcessLogFileRotatedFileVerboseFalse(t *testing.T) {
 	_, err = f.WriteString("what now brown cow\n")
 	assert.NoError(t, err)
 	f.Close()
-	_, err = ioutil.ReadFile(plugin.LogFile)
+	_, err = os.ReadFile(plugin.LogFile)
 	assert.NoError(t, err)
 
 	eventBuf := new(bytes.Buffer)
@@ -681,7 +679,7 @@ func TestProcessLogFileRotatedFileVerboseFalse(t *testing.T) {
 	_, err = f.WriteString("the brown cow\n")
 	assert.NoError(t, err)
 	f.Close()
-	_, err = ioutil.ReadFile(plugin.LogFile)
+	_, err = os.ReadFile(plugin.LogFile)
 	assert.NoError(t, err)
 	logs, err = buildLogArray()
 	assert.NoError(t, err)
@@ -696,7 +694,7 @@ func TestProcessLogFileRotatedFileVerboseFalse(t *testing.T) {
 	_, err = f.WriteString("brown cows yeah!\n")
 	assert.NoError(t, err)
 	f.Close()
-	_, err = ioutil.ReadFile(plugin.LogFile)
+	_, err = os.ReadFile(plugin.LogFile)
 	assert.NoError(t, err)
 	matches, err = processLogFile(logs[0], enc)
 	assert.NoError(t, err)
@@ -713,12 +711,12 @@ func TestProcessLogFileWithNegativeCachedOffset(t *testing.T) {
 		plugin.DisableEvent = true
 		plugin.MatchExpr = "brown"
 
-		td, err := ioutil.TempDir("", "")
+		td, err := os.MkdirTemp("", "")
 		assert.NoError(t, err)
 		defer os.RemoveAll(td)
 		plugin.StateDir = td
 
-		logdir, err := ioutil.TempDir("", "")
+		logdir, err := os.MkdirTemp("", "")
 		assert.NoError(t, err)
 		defer os.RemoveAll(logdir)
 
