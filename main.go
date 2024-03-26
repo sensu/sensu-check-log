@@ -314,8 +314,8 @@ func checkArgs(event *corev2.Event) (int, error) {
 	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(plugin.StateDir, os.ModePerm)
 		if err != nil {
-			//err = fmt.Errorf("selected --state-directory %s does not exist and cannot be created.Expected a correct Path to create/reach the directory.", plugin.StateDir)
-			//fmt.Println(err.Error())
+			err = fmt.Errorf("selected --state-directory %s does not exist and cannot be created.Expected a correct Path to create/reach the directory.", plugin.StateDir)
+			fmt.Println(err.Error())
 			//return sensu.CheckStateCritical, nil
 			logrus.Exit(sensu.CheckStateCritical)
 			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created.Expected a correct Path to create/reach the directory ", plugin.StateDir)
