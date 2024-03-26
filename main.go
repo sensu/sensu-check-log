@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"path/filepath"
@@ -313,7 +314,11 @@ func checkArgs(event *corev2.Event) (int, error) {
 	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(plugin.StateDir, os.ModePerm)
 		if err != nil {
-			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created", plugin.StateDir)
+			//err = fmt.Errorf("selected --state-directory %s does not exist and cannot be created.Expected a correct Path to create/reach the directory.", plugin.StateDir)
+			//fmt.Println(err.Error())
+			//return sensu.CheckStateCritical, nil
+			logrus.Exit(sensu.CheckStateCritical)
+			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created.Expected a correct Path to create/reach the directory ", plugin.StateDir)
 		}
 	}
 	if _, err := os.Stat(plugin.StateDir); err != nil {
@@ -344,7 +349,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	check := sensu.NewGoCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
+	//check := sensu.NewGoCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
+	check := sensu.NewCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
+	//fmt.Println("Check==", check.)
 	check.Execute()
 }
 
@@ -540,7 +547,8 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	state.Offset = int64(offset + bytesRead)
 	state.MatchExpr = plugin.MatchExpr
 	if plugin.Verbose {
-		fmt.Printf("File %s Match Status %v BytesRead: %v New Offset: %v\n", file, status, bytesRead, state.Offset)
+		fmt.Printf("File %s Match Status %v BytesRead: %v"+
+			" New Offset: %v\n", file, status, bytesRead, state.Offset)
 	}
 
 	if err := setState(state, stateFile); err != nil {
