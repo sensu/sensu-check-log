@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"path/filepath"
@@ -312,12 +311,13 @@ func checkArgs(event *corev2.Event) (int, error) {
 		return sensu.CheckStateCritical, fmt.Errorf("--match-expr not specified")
 	}
 	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(plugin.StateDir, os.ModePerm)
+		//err := os.Mkdir(plugin.StateDir, os.ModePerm)
+		err := os.MkdirAll(plugin.StateDir, os.ModePerm)
 		if err != nil {
 			err = fmt.Errorf("selected --state-directory %s does not exist and cannot be created.Expected a correct Path to create/reach the directory", plugin.StateDir)
 			fmt.Println(err.Error())
-			logrus.Exit(sensu.CheckStateCritical)
-			//return sensu.CheckStateCritical, nil
+			//logrus.Exit(sensu.CheckStateCritical)
+			return sensu.CheckStateCritical, nil
 			//return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created.Expected a correct Path to create/reach the directory", plugin.StateDir)
 		}
 	}
