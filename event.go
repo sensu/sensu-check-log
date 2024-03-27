@@ -13,7 +13,11 @@ func createEvent(inputEvent *corev2.Event, status int, checkNameTemplate string,
 		return nil, errors.New("negative status")
 	}
 	// Let's construct the check name from template
-	checkName, err := templates.EvalTemplate("check-name", checkNameTemplate, inputEvent)
+	var checkName = inputEvent.Check.Name
+	var err error
+	if len(checkNameTemplate) > 0 {
+		checkName, err = templates.EvalTemplate("check-name", checkNameTemplate, inputEvent)
+	}
 	if err != nil {
 		return nil, err
 	}
