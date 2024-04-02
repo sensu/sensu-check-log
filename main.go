@@ -310,15 +310,6 @@ func checkArgs(event *corev2.Event) (int, error) {
 	if plugin.MatchExpr == "" {
 		return sensu.CheckStateCritical, fmt.Errorf("--match-expr not specified")
 	}
-	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(plugin.StateDir, os.ModePerm)
-		if err != nil {
-			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created", plugin.StateDir)
-		}
-	}
-	if _, err := os.Stat(plugin.StateDir); err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("unexpected error accessing --state-directory %s: %s", plugin.StateDir, err)
-	}
 	if plugin.DryRun {
 		plugin.Verbose = true
 		fmt.Printf("LogFileExpr: %s StateDir: %s\n", plugin.LogFileExpr, plugin.StateDir)
@@ -344,7 +335,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	check := sensu.NewGoCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
+	check := sensu.NewCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
 	check.Execute()
 }
 
@@ -540,7 +531,8 @@ func processLogFile(file string, enc *json.Encoder) (int, error) {
 	state.Offset = int64(offset + bytesRead)
 	state.MatchExpr = plugin.MatchExpr
 	if plugin.Verbose {
-		fmt.Printf("File %s Match Status %v BytesRead: %v New Offset: %v\n", file, status, bytesRead, state.Offset)
+		fmt.Printf("File %s Match Status %v BytesRead: %v"+
+			" New Offset: %v\n", file, status, bytesRead, state.Offset)
 	}
 
 	if err := setState(state, stateFile); err != nil {
@@ -594,6 +586,17 @@ func setStatus(currentStatus int, numMatches int) int {
 func executeCheck(event *corev2.Event) (int, error) {
 	var status int
 	status = 0
+	//create the state dir if not present
+	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
+		err2 := os.Mkdir(plugin.StateDir, os.ModePerm)
+		if err2 != nil {
+			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created.Expected a correct Path to create/reach the directory", plugin.StateDir)
+		}
+	}
+	if _, err := os.Stat(plugin.StateDir); err != nil {
+		return sensu.CheckStateCritical, fmt.Errorf("unexpected error accessing --state-directory %s: %s", plugin.StateDir, err)
+	}
+
 	logs, e := buildLogArray()
 	if e != nil {
 		return sensu.CheckStateCritical, e

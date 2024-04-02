@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Use summary output by default in generated events
 * Include files with zero matching lines in summary output
 * typo in long argument for invert-thresholds
+* In case wrong argument is passed to `state-directory` only the error will be shown and not the help arguments along
 
 ## [0.6.0] - 2022-05-05
 
