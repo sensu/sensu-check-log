@@ -17,9 +17,9 @@ func createEvent(inputEvent *corev2.Event, status int, checkNameTemplate string,
 	var err error
 	if len(checkNameTemplate) > 0 {
 		checkName, err = templates.EvalTemplate("check-name", checkNameTemplate, inputEvent)
-	}
-	if err != nil {
+		if err != nil {
 		return nil, err
+		}
 	}
 	outputEvent := corev2.Event{Entity: inputEvent.Entity}
 	outputEvent.Namespace = inputEvent.Namespace
