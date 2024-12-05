@@ -648,6 +648,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 			fmt.Printf("Error: Event API url not defined. Event generation aborted\n")
 			return sensu.CheckStateWarning, nil
 		}
+
 		outputEvent, err := createEvent(event, status, plugin.CheckNameTemplate, output)
 		if err != nil {
 			fmt.Printf("Error creating event: %s\n", err)
