@@ -7,14 +7,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	corev2 "github.com/sensu/core/v2"
-	"github.com/sensu/sensu-plugin-sdk/sensu"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+
+	corev2 "github.com/sensu/core/v2"
+	"github.com/sensu/sensu-plugin-sdk/sensu"
 )
 
 // Config represents the check plugin config.
@@ -334,9 +335,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	//check := sensu.NewGoCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
 	check := sensu.NewCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
-	//fmt.Println("Check==", check.)
 	check.Execute()
 }
 
@@ -597,7 +596,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 		}
 	}
 	if _, err := os.Stat(plugin.StateDir); err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("unexpected error accessing --state-directory %s: %s", plugin.StateDir, err)
+		return sensu.CheckStateCritical, fmt.Errorf("unexpected error accessing --state-directory %s: %s", plugin.StateDir, err.Error())
 	}
 
 	logs, e := buildLogArray()
