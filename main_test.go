@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	corev2 "github.com/sensu/core/v2"
 	"github.com/stretchr/testify/assert"
@@ -744,4 +745,45 @@ func TestProcessLogFileWithNegativeCachedOffset(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, 0, matches)
 	}
+}
+
+func TestBuildLogArrayWithLatestMtime(t *testing.T) {
+	// Setup test files with different mtimes
+	err := os.MkdirAll("./testingdata/mtime-test", 0755)
+	assert.NoError(t, err)
+	defer os.RemoveAll("./testingdata/mtime-test")
+
+	// Create first file (older)
+	file1 := "./testingdata/mtime-test/log1.log"
+	err = os.WriteFile(file1, []byte("test log 1"), 0644)
+	assert.NoError(t, err)
+
+	// Wait a bit to ensure different mtime
+	time.Sleep(10 * time.Millisecond)
+
+	// Create second file (newer)
+	file2 := "./testingdata/mtime-test/log2.log"
+	err = os.WriteFile(file2, []byte("test log 2"), 0644)
+	assert.NoError(t, err)
+
+	// Test without use-latest-mtime flag (should return both files)
+	plugin.LogFile = ""
+	plugin.LogPath = "./testingdata/mtime-test/"
+	plugin.LogFileExpr = "log.*\\.log$"
+	plugin.UseLatestMtime = false
+	plugin.Verbose = false
+
+	logs, err := buildLogArray()
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(logs))
+
+	// Test with use-latest-mtime flag (should return only the newest file)
+	plugin.UseLatestMtime = true
+
+	logs, err = buildLogArray()
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(logs))
+
+	// The returned file should be the newer one (log2.log)
+	assert.Contains(t, logs[0], "log2.log")
 }
