@@ -92,7 +92,7 @@ Flags:
 |--missing-ok               |CHECK_LOG_MISSING_OK               |
 |--invert-thresholds        |CHECK_LOG_INVERT_THRESHOLDS        |
 |--reset-state              |CHECK_LOG_RESET_STATE              |
-|--use-latest-mtime         |CHECK_LOG_USE_LATEST_MTIME         |
+|--mtime                    |CHECK_LOG_MTIME                    |
 
 ### Event generation
 

@@ -236,7 +236,7 @@ var (
 			Value:    &plugin.ForceReadFromStart,
 		},
 		&sensu.PluginConfigOption[bool]{
-			Path:      "use-latest-mtime",
+			Path:      "mtime",
 			Env:       "CHECK_LOG_MTIME",
 			Argument:  "mtime",
 			Shorthand: "M",
