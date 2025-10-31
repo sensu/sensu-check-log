@@ -203,24 +203,6 @@ spec:
 
 ```
 
-Example of configuring a check to monitor only the most recently modified log file when multiple files match the pattern (useful for log rotation scenarios):
-
-```yml
----
-type: CheckConfig
-api_version: core/v2
-metadata:
-  name: sensu-check-log-latest
-spec:  
-  command: sensu-check-log -p /var/log/ -e "application.*\.log$" -m "(?i)error" -d /tmp/sensu-check-latest-log/ --use-latest-mtime
-  stdin: true
-  runtime_assets:
-  - sensu/sensu-check-log
-
-```
-
-
-
 ## Installation from source
 
 The preferred way of installing and deploying this plugin is to use it as an Asset. If you would
@@ -237,14 +219,13 @@ go build
 
 ### File Selection with Modification Time
 
-When using the `--log-file-expr` option with wildcard patterns, multiple log files may match the expression. By default, all matching files are monitored. However, you can use the `--use-latest-mtime` flag to monitor only the file with the most recent modification time.
+When using the `--log-file-expr` option with wildcard patterns, multiple log files may match the expression. By default, all matching files are monitored. However, you can use the `--mtime` flag to monitor only the file with the most recent modification time.
 
 This feature is particularly useful in log rotation scenarios where:
 - Log files are rotated with timestamps (e.g., `app.log`, `app.log.1`, `app.log.2`)
 - You want to monitor only the actively written log file
 - Multiple log files exist but only the newest is relevant
 
-The modification time comparison helps ensure that you're always monitoring the most current log file, similar to the `CompareByLastUpdate` feature found in other log monitoring tools.
 
 ## Contributing
 
