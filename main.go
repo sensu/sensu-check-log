@@ -430,7 +430,7 @@ func buildLogArray() ([]string, error) {
 				return nil, e
 			}
 
-			// If use-latest-mtime flag is set, only keep the file with the most recent modification time
+			// If mtime flag is set, only keep the file with the most recent modification time
 			if plugin.UseLatestMtime && len(matchingFiles) > 1 {
 				// Sort by modification time, most recent first
 				sort.Slice(matchingFiles, func(i, j int) bool {
