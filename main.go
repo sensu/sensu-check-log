@@ -586,15 +586,17 @@ func setStatus(currentStatus int, numMatches int) int {
 func executeCheck(event *corev2.Event) (int, error) {
 	var status int
 	status = 0
-	//create the state dir if not present
+
+	//create state directory if not existing already
 	if _, err := os.Stat(plugin.StateDir); errors.Is(err, os.ErrNotExist) {
-		err2 := os.Mkdir(plugin.StateDir, os.ModePerm)
-		if err2 != nil {
+		//creating recursive directories incase
+		err := os.MkdirAll(plugin.StateDir, os.ModePerm)
+		if err != nil {
 			return sensu.CheckStateCritical, fmt.Errorf("selected --state-directory %s does not exist and cannot be created.Expected a correct Path to create/reach the directory", plugin.StateDir)
 		}
 	}
 	if _, err := os.Stat(plugin.StateDir); err != nil {
-		return sensu.CheckStateCritical, fmt.Errorf("unexpected error accessing --state-directory %s: %s", plugin.StateDir, err)
+		return sensu.CheckStateCritical, fmt.Errorf("unexpected error accessing --state-directory %s: %s", plugin.StateDir, err.Error())
 	}
 
 	logs, e := buildLogArray()
