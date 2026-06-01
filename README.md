@@ -66,6 +66,7 @@ Flags:
   -v, --verbose                      Verbose output, useful for testing.
       --output-matching-string       Include detailed information about each matching line in output
       --force-read-from-start        Ignore cached file offset in state directory and read file(s) from beginning.
+  -M, --mtime                        When multiple files match the log file expression, only monitor the file with the most recent modification time
   -h, --help                         help for sensu-check-log
 ```
 
@@ -91,6 +92,7 @@ Flags:
 |--missing-ok               |CHECK_LOG_MISSING_OK               |
 |--invert-thresholds        |CHECK_LOG_INVERT_THRESHOLDS        |
 |--reset-state              |CHECK_LOG_RESET_STATE              |
+|--mtime                    |CHECK_LOG_MTIME                    |
 
 ### Event generation
 
@@ -201,8 +203,6 @@ spec:
 
 ```
 
-
-
 ## Installation from source
 
 The preferred way of installing and deploying this plugin is to use it as an Asset. If you would
@@ -216,6 +216,16 @@ go build
 ```
 
 ## Additional notes
+
+### File Selection with Modification Time
+
+When using the `--log-file-expr` option with wildcard patterns, multiple log files may match the expression. By default, all matching files are monitored. However, you can use the `--mtime` flag to monitor only the file with the most recent modification time.
+
+This feature is particularly useful in log rotation scenarios where:
+- Log files are rotated with timestamps (e.g., `app.log`, `app.log.1`, `app.log.2`)
+- You want to monitor only the actively written log file
+- Multiple log files exist but only the newest is relevant
+
 
 ## Contributing
 

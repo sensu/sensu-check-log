@@ -12,7 +12,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
+	"time"
 
 	corev2 "github.com/sensu/core/v2"
 	"github.com/sensu/sensu-plugin-sdk/sensu"
@@ -43,6 +45,7 @@ type Config struct {
 	CriticalOnly       bool
 	CheckNameTemplate  string
 	VerboseResults     bool
+	UseLatestMtime     bool
 }
 
 var (
@@ -232,6 +235,14 @@ var (
 			Usage:    "Ignore cached file offset in state directory and read file(s) from beginning.",
 			Value:    &plugin.ForceReadFromStart,
 		},
+		&sensu.PluginConfigOption[bool]{
+			Path:      "mtime",
+			Env:       "CHECK_LOG_MTIME",
+			Argument:  "mtime",
+			Shorthand: "M",
+			Usage:     "When multiple files match the log file expression, only monitor the file with the most recent modification time",
+			Value:     &plugin.UseLatestMtime,
+		},
 	}
 )
 
@@ -312,7 +323,7 @@ func checkArgs(event *corev2.Event) (int, error) {
 	}
 	if plugin.DryRun {
 		plugin.Verbose = true
-		fmt.Printf("LogFileExpr: %s StateDir: %s\n", plugin.LogFileExpr, plugin.StateDir)
+		fmt.Printf("LogFileExpr: %s StateDir: %s UseLatestMtime: %t\n", plugin.LogFileExpr, plugin.StateDir, plugin.UseLatestMtime)
 	}
 	return sensu.CheckStateOK, nil
 }
@@ -384,11 +395,21 @@ func buildLogArray() ([]string, error) {
 		}
 
 		if filepath.IsAbs(absLogPath) {
+			// Collect all matching files with their modification times
+			type fileWithMtime struct {
+				path  string
+				mtime time.Time
+			}
+			var matchingFiles []fileWithMtime
+
 			e = filepath.Walk(absLogPath, func(path string, info os.FileInfo, err error) error {
 				if err == nil && logRegExp.MatchString(path) {
 					if filepath.IsAbs(path) {
 						if !info.IsDir() {
-							logs = append(logs, path)
+							matchingFiles = append(matchingFiles, fileWithMtime{
+								path:  path,
+								mtime: info.ModTime(),
+							})
 						}
 					} else {
 						return fmt.Errorf("path %s not absolute", path)
@@ -398,6 +419,24 @@ func buildLogArray() ([]string, error) {
 			})
 			if e != nil {
 				return nil, e
+			}
+
+			// If mtime flag is set, only keep the file with the most recent modification time
+			if plugin.UseLatestMtime && len(matchingFiles) > 1 {
+				// Sort by modification time, most recent first
+				sort.Slice(matchingFiles, func(i, j int) bool {
+					return matchingFiles[i].mtime.After(matchingFiles[j].mtime)
+				})
+				// Keep only the most recently modified file
+				logs = append(logs, matchingFiles[0].path)
+				if plugin.Verbose {
+					fmt.Printf("Using latest modified file: %s (mtime: %v)\n", matchingFiles[0].path, matchingFiles[0].mtime)
+				}
+			} else {
+				// Add all matching files
+				for _, file := range matchingFiles {
+					logs = append(logs, file.path)
+				}
 			}
 		}
 	}
