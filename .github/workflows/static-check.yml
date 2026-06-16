@@ -13,11 +13,11 @@ jobs:
     name: staticcheck (project)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - uses: dominikh/staticcheck-action@v1.3.0
+      - uses: dominikh/staticcheck-action@v1
         with:
-          version: "2023.1.1"
+          version: "latest"
 env:
   GO_VERSION: 1.21.5
