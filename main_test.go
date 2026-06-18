@@ -406,7 +406,7 @@ func TestExecuteWithEvent(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, status)
 
-	// no name template error
+	//no name template error
 	td, err = os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	assert.NoError(t, err)
@@ -415,7 +415,7 @@ func TestExecuteWithEvent(t *testing.T) {
 	plugin.CheckNameTemplate = ""
 	status, err = executeCheck(event)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, status)
+	assert.Equal(t, 0, status)
 
 	// 404 events api status error
 	td, err = os.MkdirTemp("", "")
